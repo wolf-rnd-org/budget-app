@@ -1,7 +1,10 @@
-import { authApi } from './http';
+import { authApi, isMockMode } from './http';
 import { AuthUser } from './types';
 
 export async function getCurrentUser(): Promise<AuthUser> {
-  const response = await authApi.get('/me.json');
+  const endpoint = isMockMode()
+    ? '/mocks/auth/me.json'  
+    : '/auth/me';            
+  const response = await authApi.get(endpoint);
   return response.data;
 }
