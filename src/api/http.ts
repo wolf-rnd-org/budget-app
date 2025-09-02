@@ -9,25 +9,23 @@ export function isMockMode(): boolean {
 // Auth API instance
 export const authApi = axios.create({
   baseURL: isMockMode() 
-    ? '/mocks/auth' 
-    : import.meta.env.VITE_AUTH_BASE_URL,
-  timeout: 10000,
+    ? '' 
+    : `${import.meta.env.VITE_AUTH_BASE_URL}`,
+  
 });
 
 // Budget API instance
 export const budgetApi = axios.create({
   baseURL: isMockMode() 
-    ? '/mocks/budget' 
-    : import.meta.env.VITE_BUDGET_BASE_URL,
-  timeout: 10000,
+    ? '' 
+    : `${import.meta.env.VITE_BUDGET_BASE_URL}`,
 });
 
 // Programs API instance
 export const programsApi = axios.create({
   baseURL: isMockMode()
-    ? '/mocks/programs'
-    : import.meta.env.VITE_PROGRAMS_BASE_URL,
-  timeout: 10000,
+    ? ''
+    : `${import.meta.env.VITE_PROGRAMS_BASE_URL}`,
 });
 
 // Common interceptors
