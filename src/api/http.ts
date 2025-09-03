@@ -33,17 +33,10 @@ export const programsApi = axios.create({
 export const expensesApi = axios.create({
   baseURL: isMockMode()
     ? '/mocks/programs'
-    : import.meta.env.VITE_PROGRAMS_BASE_URL,
-  timeout: 10000,
-});
-
-// Expenses API instance
-export const expensesApi = axios.create({
-  baseURL: isMockMode()
-    ? '/mocks/programs'
     : import.meta.env.VITE_EXPENSES_BASE_URL,
   timeout: 10000,
 });
+
 
 // Common interceptors
 function attach401Interceptor(instance: typeof authApi) {

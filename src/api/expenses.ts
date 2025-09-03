@@ -13,12 +13,10 @@ export async function getExpenses(  params: GetExpensesParams): Promise<{ data: 
   const { userId, programId, page = 1, pageSize = 20 } = params;
   // ⚠️ ב־mock לקרוא לקובץ .json; ב־real לקרוא ל־endpoint
   const endpoint = isMockMode() ? '/expenses.json' : '/';
-
   const response = await expensesApi.get(endpoint, {
     params: isMockMode() ? undefined : { user_id:userId , program_id: programId, page, pageSize },
     headers: { Accept: 'application/json' },
   });
-
   if (isMockMode()) {
     const all: Expense[] = response.data as Expense[];
 
