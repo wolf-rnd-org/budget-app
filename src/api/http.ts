@@ -18,13 +18,19 @@ export const authApi = axios.create({
 // Budget API instance
 export const budgetApi = axios.create({
   baseURL: isMockMode() 
-    ? '/mocks/budget' 
-    : import.meta.env.VITE_BUDGET_BASE_URL,
-  timeout: 10000,
+    ? '' 
+    : `${import.meta.env.VITE_BUDGET_BASE_URL}`,
 });
 
 // Programs API instance
 export const programsApi = axios.create({
+  baseURL: isMockMode()
+    ? ''
+    : `${import.meta.env.VITE_PROGRAMS_BASE_URL}`,
+});
+
+// Expenses API instance
+export const expensesApi = axios.create({
   baseURL: isMockMode()
     ? '/mocks/programs'
     : import.meta.env.VITE_PROGRAMS_BASE_URL,

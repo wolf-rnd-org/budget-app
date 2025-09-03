@@ -1,4 +1,4 @@
-import { authApi } from './http';
+import { authApi, isMockMode } from './http';
 import { AuthUser } from './types';
 
 export interface LoginCredentials {
