@@ -9,7 +9,7 @@ export interface Program {
 
 // שליפת כל התוכניות
 export async function getPrograms(): Promise<Program[]> {
-  const endpoint = isMockMode() ? '/mocks/programs/programs.json' : '/programs';
+  const endpoint = isMockMode() ? '/programs.json' : '/programs';
 
   const response = await programsApi.get(endpoint, {
     // במוק זה קובץ סטטי - אין פרמטרים
@@ -23,7 +23,7 @@ export async function getPrograms(): Promise<Program[]> {
 // שליפת תוכנית לפי מזהה
 export async function getProgramById(programId: string | number): Promise<Program> {
   const endpoint = isMockMode()
-    ? '/mocks/programs/getProgramById.json'
+    ? '/getProgramById.json'
     : `/programs/${programId}`;
 
   const response = await programsApi.get(endpoint, {

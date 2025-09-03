@@ -44,7 +44,6 @@ export function ExpensesGridPage() {
       if (!currentProgramId || !canViewBudgets) return;
       try {
         const summary = await getProgramSummary(currentProgramId);
-
         setTotalBudget(summary.total_budget);
         setTotalExpenses(summary.total_expenses);
         setRemainingBalance(summary.remaining_balance);
