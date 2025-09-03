@@ -61,7 +61,7 @@ export async function getProgramsByUserId(userId: string | number): Promise<Prog
   const uid = String(userId);
   const endpoint = isMockMode()
     ? '/getProgramsByUserId.json'
-    : `/programs/${uid}`;
+    : `/${uid}`;
   const response = await programsApi.get(endpoint, {
     // במוק זה קובץ סטטי; בפרודקשן אין צורך בפרמטרים כי ה-id בנתיב
     params: isMockMode() ? undefined : undefined,
@@ -70,4 +70,24 @@ export async function getProgramsByUserId(userId: string | number): Promise<Prog
   
   const data = response.data;
   return data as Program[];
+}
+
+// ---------------- NEW FUNCTION ----------------
+export interface ProgramSummary {
+  program_id: string;
+  total_budget: number;
+  total_expenses: number;
+  remaining_balance: number;
+}
+export async function getProgramSummary(
+  programId: string | number
+): Promise<ProgramSummary> {
+  // ⚠️ גם כאן: ב־mock לקרוא לקובץ, בפרודקשן לאנדפוינט
+  const endpoint = isMockMode() ? '/summary.json' : '/summary';
+  const response = await programsApi.get(endpoint, {
+    params: isMockMode() ? undefined : { program_id: programId },
+    headers: { Accept: 'application/json' },
+  });
+
+  return response.data as ProgramSummary;
 }

@@ -1,10 +1,11 @@
 import React from 'react';
 import { Plus, Building2 } from 'lucide-react';
 import { Outlet, useNavigate } from 'react-router-dom';
-import { getExpenses, getBudgetSummary } from '@/api/expenses';
+import { getExpenses } from '@/api/expenses';
 import { Expense } from '@/api/types';
 import { useAuthStore } from '@/stores/authStore';
 import { BudgetSummaryCards, ProjectSelector, SearchFilters, ExpensesTable, LoadingStates, AddExpenseWizard, EditExpenseModal } from './components';
+import { getProgramSummary } from '@/api/programs';
 
 export function ExpensesGridPage() {
   const navigate = useNavigate();
@@ -33,13 +34,17 @@ export function ExpensesGridPage() {
   const [showEditExpense, setShowEditExpense] = React.useState(false);
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
 
+  // Get user actions from store
+  const userActions = user?.actions || [];
+  const canViewBudgets = userActions.includes('program_budgets.view');
+
   // Fetch budget summary on component mount
   React.useEffect(() => {
     async function fetchBudgetSummary() {
-      if (!currentProgramId) return;
-      
+      if (!currentProgramId || !canViewBudgets) return;
       try {
-        const summary = await getBudgetSummary(currentProgramId);
+        const summary = await getProgramSummary(currentProgramId);
+
         setTotalBudget(summary.total_budget);
         setTotalExpenses(summary.total_expenses);
         setRemainingBalance(summary.remaining_balance);
@@ -50,7 +55,7 @@ export function ExpensesGridPage() {
     }
 
     fetchBudgetSummary();
-  }, [currentProgramId]);
+  }, [currentProgramId, canViewBudgets]);
 
   React.useEffect(() => {
     if (!user?.userId || !currentProgramId) {
@@ -64,7 +69,8 @@ export function ExpensesGridPage() {
         const result = await getExpenses({ 
           userId: user.userId, 
           page: 1, 
-          pageSize 
+          pageSize ,
+          programId: currentProgramId
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -89,7 +95,8 @@ export function ExpensesGridPage() {
       const result = await getExpenses({ 
         userId: user.userId, 
         page: nextPage, 
-        pageSize 
+        pageSize ,
+        programId: currentProgramId
       });
       setExpenses(prev => [...prev, ...result.data]);
       setHasMore(result.hasMore);
@@ -131,24 +138,29 @@ export function ExpensesGridPage() {
   const handleNewExpense = () => {
     setShowAddExpense(true);
   };
+const handleExpenseCreated = async (newExpense: Expense) => {
+  // אופטימיסטי
+  setExpenses(prev => [newExpense, ...prev]);
+  setShowAddExpense(false);
 
-  const handleExpenseCreated = (newExpense: Expense) => {
-    // Optimistically add to the beginning of the list
-    setExpenses(prev => [newExpense, ...prev]);
-    setShowAddExpense(false);
-    
-    // Refresh budget summary
-    if (currentProgramId) {
-      getBudgetSummary(currentProgramId).then(summary => {
-        setTotalBudget(summary.total_budget);
-        setTotalExpenses(summary.total_expenses);
-        setRemainingBalance(summary.remaining_balance);
-        setBudgetUsedPercentage((summary.total_expenses / summary.total_budget) * 100);
-      }).catch(err => {
-        console.error('Error refreshing budget summary:', err);
-      });
-    }
-  };
+  if (!currentProgramId) return;
+
+  try {
+    const summary = await getBudgetSummary(currentProgramId);
+
+    setTotalBudget(summary.total_budget);
+    setTotalExpenses(summary.total_expenses);
+    setRemainingBalance(summary.remaining_balance);
+
+    const usedPct = summary.total_budget > 0
+      ? (summary.total_expenses / summary.total_budget) * 100
+      : 0;
+
+    setBudgetUsedPercentage(usedPct);
+  } catch (err) {
+    console.error("Error refreshing budget summary:", err);
+  }
+};
 
   const handleExpenseUpdated = (updatedExpense: Expense) => {
     // Optimistically update the expense in the list
@@ -159,7 +171,7 @@ export function ExpensesGridPage() {
     setEditingExpenseId(null);
     
     // Refresh budget summary
-    if (currentProgramId) {
+    if (currentProgramId && canViewBudgets) {
       getBudgetSummary(currentProgramId).then(summary => {
         setTotalBudget(summary.total_budget);
         setTotalExpenses(summary.total_expenses);
@@ -172,19 +184,20 @@ export function ExpensesGridPage() {
   };
 
   // Filter expenses based on search criteria
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesText = searchText === '' || 
-      expense.project.toLowerCase().includes(searchText.toLowerCase()) ||
-      expense.supplier_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      expense.invoice_description.toLowerCase().includes(searchText.toLowerCase());
+  const filteredExpenses = expenses;
+  // .filter(expense => {
+  //   const matchesText = searchText === '' || 
+  //     expense.project.toLowerCase().includes(searchText.toLowerCase()) ||
+  //     expense.supplier_name.toLowerCase().includes(searchText.toLowerCase()) ||
+  //     expense.invoice_description.toLowerCase().includes(searchText.toLowerCase());
     
-    const matchesStatus = statusFilter === '' || expense.status === statusFilter;
+  //   const matchesStatus = statusFilter === '' || expense.status === statusFilter;
     
-    const matchesDateFrom = dateFrom === '' || new Date(expense.date) >= new Date(dateFrom);
-    const matchesDateTo = dateTo === '' || new Date(expense.date) <= new Date(dateTo);
+  //   const matchesDateFrom = dateFrom === '' || new Date(expense.date) >= new Date(dateFrom);
+  //   const matchesDateTo = dateTo === '' || new Date(expense.date) <= new Date(dateTo);
     
-    return matchesText && matchesStatus && matchesDateFrom && matchesDateTo;
-  });
+  //   return matchesText && matchesStatus && matchesDateFrom && matchesDateTo;
+  // });
 
   // Show loading if no program selected
   if (user && !currentProgramId) {
@@ -212,6 +225,7 @@ export function ExpensesGridPage() {
   }
 
   return (
+    
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header with Project Selector */}
@@ -233,12 +247,14 @@ export function ExpensesGridPage() {
           </div>
         </div>
 
-        <BudgetSummaryCards
-          totalBudget={totalBudget}
-          totalExpenses={totalExpenses}
-          remainingBalance={remainingBalance}
-          budgetUsedPercentage={budgetUsedPercentage}
-        />
+        {canViewBudgets && (
+          <BudgetSummaryCards
+            totalBudget={totalBudget}
+            totalExpenses={totalExpenses}
+            remainingBalance={remainingBalance}
+            budgetUsedPercentage={budgetUsedPercentage}
+          />
+        )}
 
         <SearchFilters
           searchText={searchText}

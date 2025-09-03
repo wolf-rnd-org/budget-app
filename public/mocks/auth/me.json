@@ -1,7 +1,7 @@
 {
-  "userId": 101,
+  "userId": 2,
   "email": "user@example.com",
   "firstName": "Naomi",
   "lastName": "Masing",
-  "features": ["expenses.view","expenses.create","reports.view"]
+  "actions": ["program_budgets.view", "expenses.view","expenses.create","reports.view"]
 }
