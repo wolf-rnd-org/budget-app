@@ -3,7 +3,7 @@ export type AuthUser = {
   email: string;
   firstName: string;
   lastName: string;
-  features: string[];
+  actions: string[];
 };
 
 export type Expense = {
@@ -23,3 +23,31 @@ export type Expense = {
   status: string;
   user_id: number | string;
 };
+
+export interface LoginCredentials {
+  email: string;
+  password: string;
+}
+
+export interface ChangePasswordCredentials {
+  currentPassword: string;
+  newPassword: string;
+}
+
+export interface AuthResponse {
+  user: AuthUser;
+  token?: string;
+}
+
+export interface loginResponse {
+  userId: number;
+}
+
+// src/api/types.ts (או כל מקום מרכזי לטיפוסים)
+export interface MeResponse {
+  userId: number;
+  email: string;
+  firstName: string;
+  lastName: string;
+  actions: string[]; // לדוגמה: ["expenses.view","expenses.create","reports.view"]
+}

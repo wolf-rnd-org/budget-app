@@ -3,14 +3,15 @@ import axios from 'axios';
 const apiMode = import.meta.env.VITE_API_MODE || 'mock';
 
 export function isMockMode(): boolean {
+  
   return apiMode === 'mock';
 }
 
 // Auth API instance
 export const authApi = axios.create({
   baseURL: isMockMode() 
-    ? '/mocks/auth' 
-    : import.meta.env.VITE_AUTH_BASE_URL,
+    ? '/mocks/auth' : '/mocks/auth',
+    // : import.meta.env.VITE_AUTH_BASE_URL,
   timeout: 10000,
 });
 
@@ -27,6 +28,14 @@ export const programsApi = axios.create({
   baseURL: isMockMode()
     ? '/mocks/programs'
     : import.meta.env.VITE_PROGRAMS_BASE_URL,
+  timeout: 10000,
+});
+
+// Expenses API instance
+export const expensesApi = axios.create({
+  baseURL: isMockMode()
+    ? '/mocks/programs'
+    : import.meta.env.VITE_EXPENSES_BASE_URL,
   timeout: 10000,
 });
 

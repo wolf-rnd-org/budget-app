@@ -1,9 +1,10 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Link } from 'react-router-dom';
-import { AppBar, Toolbar, Typography, Button, Box, ThemeProvider, createTheme, CssBaseline } from '@mui/material';
+import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { LoginPage } from '@/pages/Login';
 import { ExpensesGridPage } from '@/pages/ExpensesGrid';
 import { NewExpensePage } from '@/pages/NewExpense';
+import { ProtectedRoute, UserProfile } from '@/components';
 import { useAuthStore } from '@/stores/authStore';
 import { getCurrentUser } from '@/api/auth';
 
@@ -20,26 +21,46 @@ const theme = createTheme({
 });
 
 function Navbar() {
+  const { user, hydrateFromMe } = useAuthStore();
+
   return (
-    <AppBar position="static" elevation={1}>
-      <Toolbar>
-        <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-          אפליקציה לניהול הוצאות
-        </Typography>
-        <Box sx={{ display: 'flex', gap: 2 }}>
-          <Button color="inherit" component={Link} to="/login">
-            רישום
-          </Button>
-          <Button color="inherit" component={Link} to="/expenses">
-            הוצאות
-          </Button>
-         
-        </Box>
-      </Toolbar>
-    </AppBar>
+    <nav className="bg-white shadow-sm border-b border-gray-200">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-between items-center h-16">
+          <div className="flex items-center gap-8">
+            <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
+              אפליקציה לניהול הוצאות
+            </Link>
+            
+            {user && (
+              <div className="hidden md:flex items-center gap-6">
+                <Link
+                  to="/expenses"
+                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                >
+                  הוצאות
+                </Link>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-center gap-4">
+            {user ? (
+              <UserProfile />
+            ) : (
+              <Link
+                to="/login"
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-all"
+              >
+                התחבר
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    </nav>
   );
 }
-
 function App() {
   const { setUser, clearUser, setLoading } = useAuthStore();
 
@@ -66,10 +87,31 @@ function App() {
           <Navbar />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route path="/expenses" element={<ExpensesGridPage />}>
-              <Route path="new" element={<NewExpensePage />} />
+            <Route 
+              path="/expenses" 
+              element={
+                <ProtectedRoute requiredFeatures={['expenses.view']}>
+                  <ExpensesGridPage />
+                </ProtectedRoute>
+              }
+            >
+              <Route 
+                path="new" 
+                element={
+                  <ProtectedRoute requiredFeatures={['expenses.create']}>
+                    <NewExpensePage />
+                  </ProtectedRoute>
+                } 
+              />
             </Route>
-            <Route path="/" element={<ExpensesGridPage />} />
+            <Route 
+              path="/" 
+              element={
+                <ProtectedRoute requiredFeatures={['expenses.view']}>
+                  <ExpensesGridPage />
+                </ProtectedRoute>
+              } 
+            />
           </Routes>
         </div>
       </Router>

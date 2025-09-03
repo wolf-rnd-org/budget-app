@@ -50,7 +50,8 @@ export function ExpensesTable({
         const result = await getExpenses({ 
           userId: user.userId, 
           page: 1, 
-          pageSize 
+          pageSize ,
+          programId: programId
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -75,7 +76,8 @@ export function ExpensesTable({
       const result = await getExpenses({ 
         userId: user.userId, 
         page: nextPage, 
-        pageSize 
+        pageSize ,
+        programId: programId
       });
       setExpenses(prev => [...prev, ...result.data]);
       setHasMore(result.hasMore);
@@ -100,19 +102,20 @@ export function ExpensesTable({
   }, [loadMoreExpenses]);
 
   // Filter expenses based on search criteria
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesText = searchText === '' || 
-      expense.project.toLowerCase().includes(searchText.toLowerCase()) ||
-      expense.supplier_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      expense.invoice_description.toLowerCase().includes(searchText.toLowerCase());
+  const filteredExpenses = expenses;
+  // .filter(expense => {
+  //   const matchesText = searchText === '' || 
+  //     expense.project.toLowerCase().includes(searchText.toLowerCase()) ||
+  //     expense.supplier_name.toLowerCase().includes(searchText.toLowerCase()) ||
+  //     expense.invoice_description.toLowerCase().includes(searchText.toLowerCase());
     
-    const matchesStatus = statusFilter === '' || expense.status === statusFilter;
+  //   const matchesStatus = statusFilter === '' || expense.status === statusFilter;
     
-    const matchesDateFrom = dateFrom === '' || new Date(expense.date) >= new Date(dateFrom);
-    const matchesDateTo = dateTo === '' || new Date(expense.date) <= new Date(dateTo);
+  //   const matchesDateFrom = dateFrom === '' || new Date(expense.date) >= new Date(dateFrom);
+  //   const matchesDateTo = dateTo === '' || new Date(expense.date) <= new Date(dateTo);
     
-    return matchesText && matchesStatus && matchesDateFrom && matchesDateTo;
-  });
+  //   return matchesText && matchesStatus && matchesDateFrom && matchesDateTo;
+  // });
 
   // Early return if no user
   if (!user?.userId) {
@@ -145,7 +148,6 @@ export function ExpensesTable({
       </div>
     );
   }
-
   const getStatusStyle = (status: string) => {
     switch (status.toLowerCase()) {
       case 'approved':
@@ -160,7 +162,7 @@ export function ExpensesTable({
   };
 
   const getStatusText = (status: string) => {
-    switch (status.toLowerCase()) {
+    switch (status && status.toLowerCase()) {
       case 'approved':
         return 'מאושר';
       case 'pending':
@@ -178,7 +180,6 @@ export function ExpensesTable({
     }
     return categories;
   };
-
   if (filteredExpenses.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
