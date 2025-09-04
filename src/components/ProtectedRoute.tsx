@@ -1,5 +1,6 @@
 import React from 'react';
 import { Navigate, useLocation } from 'react-router-dom';
+import { AlertCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 
 interface ProtectedRouteProps {
@@ -25,7 +26,7 @@ export function ProtectedRoute({ children, requiredFeatures = [] }: ProtectedRou
 
   // Redirect to login if not authenticated
   if (!user) {
-   // return <Navigate to="/login" state={{ from: location }} replace />;
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   // Check required features
