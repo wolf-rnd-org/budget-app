@@ -1,11 +1,30 @@
 import React from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
-import { budgetApi, isMockMode } from '@/api/http';
+import { documentsApi, isMockMode } from '@/api/http';
 import { ParsedInvoiceData } from './AddExpenseWizard';
 
 interface InvoiceUploadStepProps {
   onComplete: (data: ParsedInvoiceData) => void;
 }
+
+function normalizeServerInvoice(data: any): ParsedInvoiceData {
+  const bank = data.bank || {};
+  return {
+    supplier_name: data.supplier_name ?? "",
+    business_number: data.business_number ?? "",
+    invoice_type: data.invoice_type ?? "",
+    invoice_description: data.invoice_description ?? "",
+    amount: Number(data.amount) || 0,
+    project: data.project ?? "",
+    bank_details_file: data.bank_details_file ?? undefined,
+    supplier_email: data.supplier_email ?? "",
+    bank_name: (data.bank_name ?? bank.bank_name ?? "") || "",
+    bank_branch: (data.bank_branch ?? bank.bank_branch ?? "") || "",
+    bank_account: (data.bank_account ?? bank.bank_account ?? "") || "",
+    beneficiary: (data.beneficiary ?? bank.beneficiary ?? "") || "",
+  };
+}
+
 
 export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
   const [invoiceFile, setInvoiceFile] = React.useState<File | null>(null);
@@ -50,7 +69,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
       if (isMockMode()) {
         // Mock response with sample data
         await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload time
-        
+
         const mockData: ParsedInvoiceData = {
           supplier_name: "ספק לדוגמה בע\"מ",
           business_number: "123456789",
@@ -61,7 +80,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
           bank_details_file: bankFile ? "mock-bank-details-url" : undefined,
           supplier_email: "supplier@example.com"
         };
-        
+
         onComplete(mockData);
         return;
       }
@@ -73,13 +92,13 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
         formData.append('bank_details', bankFile);
       }
 
-      const response = await budgetApi.post('/documents/upload-invoice', formData, {
+      const response = await documentsApi.post('/documents/upload-invoice', formData, {
         headers: {
           'Content-Type': 'multipart/form-data',
         },
       });
 
-      onComplete(response.data);
+      onComplete(normalizeServerInvoice(response.data));
     } catch (err) {
       setError('שגיאה בהעלאת הקבצים. אנא נסה שוב.');
       console.error('Upload error:', err);
@@ -105,7 +124,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
               </div>
               <h4 className="text-lg font-medium text-gray-900 mb-2">חשבונית *</h4>
               <p className="text-sm text-gray-600 mb-4">PDF, JPG, PNG עד 10MB</p>
-              
+
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -120,7 +139,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
                 <Upload className="w-4 h-4" />
                 בחר קובץ
               </label>
-              
+
               {invoiceFile && (
                 <div className="mt-4 flex items-center justify-center gap-2 text-green-600">
                   <CheckCircle className="w-4 h-4" />
@@ -138,7 +157,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
               </div>
               <h4 className="text-lg font-medium text-gray-900 mb-2">פרטי בנק (אופציונלי)</h4>
               <p className="text-sm text-gray-600 mb-4">PDF, JPG, PNG עד 10MB</p>
-              
+
               <input
                 type="file"
                 accept=".pdf,.jpg,.jpeg,.png"
@@ -153,7 +172,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
                 <Upload className="w-4 h-4" />
                 בחר קובץ
               </label>
-              
+
               {bankFile && (
                 <div className="mt-4 flex items-center justify-center gap-2 text-green-600">
                   <CheckCircle className="w-4 h-4" />

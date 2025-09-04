@@ -191,6 +191,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
         const updatedExpense: Expense = {
           ...expense!,
           ...updateData,
+          user_id: expense!.user_id ?? '', // Ensure user_id is never undefined
           invoice_file: newInvoiceFile ? 'new-invoice-url' : expense!.invoice_file,
           bank_details_file: newBankFile ? 'new-bank-url' : expense!.bank_details_file,
         };

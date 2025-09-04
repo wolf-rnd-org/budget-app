@@ -37,6 +37,9 @@ export const expensesApi = axios.create({
   timeout: 10000,
 });
 
+export const documentsApi = axios.create({
+  baseURL: import.meta.env.VITE_AUTH_BASE_URL,
+});
 
 // Common interceptors
 function attach401Interceptor(instance: typeof authApi) {
