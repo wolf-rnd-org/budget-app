@@ -19,6 +19,10 @@ export interface ParsedInvoiceData {
   project: string;
   bank_details_file?: string;
   supplier_email: string;
+  bank_name?: string;
+  bank_branch?: string;
+  bank_account?: string;
+  beneficiary?: string;
 }
 
 export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizardProps) {

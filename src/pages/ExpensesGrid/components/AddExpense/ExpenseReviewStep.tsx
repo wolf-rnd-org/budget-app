@@ -1,5 +1,5 @@
 import React from 'react';
-import { ArrowLeft, Save, X, Upload, CheckCircle } from 'lucide-react';
+import { ArrowLeft, Save, X, Upload, CheckCircle, FileText, AlertCircle } from 'lucide-react';
 import { budgetApi, isMockMode } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
 import { ParsedInvoiceData } from './AddExpenseWizard';
@@ -23,6 +23,10 @@ export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: E
     project: parsedData.project,
     supplier_email: parsedData.supplier_email,
     categories: [] as string[],
+    bank_name: parsedData.bank_name ?? "",
+    bank_branch: parsedData.bank_branch ?? "",
+    bank_account: parsedData.bank_account ?? "",
+    beneficiary: parsedData.beneficiary ?? "",
   });
   const [bankFile, setBankFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
@@ -202,7 +206,7 @@ export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: E
                     <FileText className="w-5 h-5 text-green-600" />
                   </div>
                   <p className="text-sm text-gray-600 mb-3">העלה פרטי בנק (אופציונלי)</p>
-                  
+
                   <input
                     type="file"
                     accept=".pdf,.jpg,.jpeg,.png"
@@ -217,7 +221,7 @@ export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: E
                     <Upload className="w-4 h-4" />
                     בחר קובץ
                   </label>
-                  
+
                   {bankFile && (
                     <div className="mt-3 flex items-center justify-center gap-2 text-green-600">
                       <CheckCircle className="w-4 h-4" />
@@ -227,53 +231,93 @@ export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: E
                 </div>
               </div>
             )}
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">בנק</label>
+                <input
+                  type="text"
+                  value={formData.bank_name}
+                  onChange={(e) => handleInputChange('bank_name', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">סניף</label>
+                <input
+                  type="text"
+                  value={formData.bank_branch}
+                  onChange={(e) => handleInputChange('bank_branch', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">מספר חשבון</label>
+                <input
+                  type="text"
+                  value={formData.bank_account}
+                  onChange={(e) => handleInputChange('bank_account', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              <div className="md:col-span-2">
+                <label className="block text-sm font-medium text-gray-700 mb-1">מוטב / בעל חשבון (אופציונלי)</label>
+                <input
+                  type="text"
+                  value={formData.beneficiary}
+                  onChange={(e) => handleInputChange('beneficiary', e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+              
+            </div>
           </div>
-        </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-            <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
-            <p className="text-red-700">{error}</p>
-          </div>
-        )}
+          {/* Error Display */}
+          {error && (
+            <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+              <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <p className="text-red-700">{error}</p>
+            </div>
+          )}
 
-        {/* Action Bar */}
-        <div className="mt-8 flex items-center justify-between">
-          <button
-            onClick={onBack}
-            className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-100 transition-all"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            חזור
-          </button>
-
-          <div className="flex items-center gap-3">
+          {/* Action Bar */}
+          <div className="mt-8 flex items-center justify-between">
             <button
-              onClick={onCancel}
-              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-100 transition-all"
+              onClick={onBack}
+              className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 px-4 py-2 rounded-lg hover:bg-gray-100 transition-all"
             >
-              <X className="w-4 h-4" />
-              ביטול
+              <ArrowLeft className="w-4 h-4" />
+              חזור
             </button>
-            
-            <button
-              onClick={handleSubmit}
-              disabled={loading || formData.categories.length === 0}
-              className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-medium transition-all min-w-[160px] justify-center"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  יוצר...
-                </>
-              ) : (
-                <>
-                  <Save className="w-4 h-4" />
-                  צור הוצאה
-                </>
-              )}
-            </button>
+
+            <div className="flex items-center gap-3">
+              <button
+                onClick={onCancel}
+                className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-800 px-6 py-3 rounded-lg hover:bg-gray-100 transition-all"
+              >
+                <X className="w-4 h-4" />
+                ביטול
+              </button>
+
+              <button
+                onClick={handleSubmit}
+                disabled={loading || formData.categories.length === 0}
+                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-medium transition-all min-w-[160px] justify-center"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    יוצר...
+                  </>
+                ) : (
+                  <>
+                    <Save className="w-4 h-4" />
+                    צור הוצאה
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       </div>
