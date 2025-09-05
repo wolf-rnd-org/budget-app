@@ -407,7 +407,7 @@ export function AssistantsManagementPage() {
   const getAssignedProgramsForAssistant = (assistant: Assistant) => {
     return userPrograms.filter(p => assistant.programIds.includes(p.id));
   };
-
+debugger
   // Filter existing assistants (exclude already assigned ones)
   const availableExistingAssistants = existingAssistants.filter(existing => 
     !assistants.some(assigned => assigned.id === existing.id) &&

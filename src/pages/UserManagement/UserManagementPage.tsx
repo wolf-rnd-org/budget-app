@@ -11,8 +11,18 @@ export function UserManagementPage() {
   const [error, setError] = React.useState<string | null>(null);
 
   // Check permissions
+  debugger
   const userActions = user?.actions || [];
   const canUpdateUsers = userActions.includes('users.update');
+  const canCreateUsers = userActions.includes('users.create');
+
+  // Show a banner error if user cannot create users
+  React.useEffect(() => {
+    debugger
+    if (!canCreateUsers) {
+      setError("You don't have permission to create users.");
+    }
+  }, [canCreateUsers]);
 
   if (!canUpdateUsers) {
     return (
