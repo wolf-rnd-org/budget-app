@@ -100,7 +100,7 @@ export interface RegisterPayload {
   last_name: string;
   email: string;
   password: string;
-  role: 'accountant' | string;
+  role: 'assistant' | 'global_user' | 'accountan' | 'regular_user' | 'admin';
   application_name?: string; // defaulted to APPLICATION_NAME if not provided
 }
 

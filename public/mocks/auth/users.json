@@ -4,20 +4,20 @@
     "email": "user1@example.com",
     "firstName": "שרה",
     "lastName": "כהן",
-    "role": "operator"
+    "role": "regular_user"
   },
   {
     "id": "2",
     "email": "user2@example.com",
     "firstName": "רחל",
     "lastName": "לוי",
-    "role": "accountant"
+    "role": "accountan"
   },
   {
     "id": "3",
     "email": "user3@example.com",
     "firstName": "מרים",
     "lastName": "ישראל",
-    "role": "manager"
+    "role": "admin"
   }
 ]

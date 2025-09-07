@@ -52,7 +52,8 @@ export function ProgramAssignmentSection() {
       setLoading(true);
       setError(null);
 
-      if (isMockMode()) {
+      // if (isMockMode()) {
+       if (false) {
         // Mock data with more programs to simulate large dataset
         await new Promise(resolve => setTimeout(resolve, 1000));
         
@@ -75,11 +76,11 @@ export function ProgramAssignmentSection() {
         ];
 
         const mockUsers: User[] = [
-          { id: '1', email: 'user1@example.com', firstName: 'שרה', lastName: 'כהן', role: 'operator', password: 'A3$45678' },
-          { id: '2', email: 'user2@example.com', firstName: 'רחל', lastName: 'לוי', role: 'accountant', password: 'B9#12345' },
-          { id: '3', email: 'user3@example.com', firstName: 'מרים', lastName: 'ישראל', role: 'manager', password: 'C7@98765' },
-          { id: '4', email: 'user4@example.com', firstName: 'דינה', lastName: 'אברהם', role: 'operator', password: 'D2!56789' },
-          { id: '5', email: 'user5@example.com', firstName: 'תמר', lastName: 'יוסף', role: 'accountant', password: 'E8%34567' },
+          { id: '1', email: 'user1@example.com', firstName: 'שרה', lastName: 'כהן', role: 'regular_user', password: 'A3$45678' },
+          { id: '2', email: 'user2@example.com', firstName: 'רחל', lastName: 'לוי', role: 'accountan', password: 'B9#12345' },
+          { id: '3', email: 'user3@example.com', firstName: 'מרים', lastName: 'ישראל', role: 'admin', password: 'C7@98765' },
+          { id: '4', email: 'user4@example.com', firstName: 'דינה', lastName: 'אברהם', role: 'regular_user', password: 'D2!56789' },
+          { id: '5', email: 'user5@example.com', firstName: 'תמר', lastName: 'יוסף', role: 'accountan', password: 'E8%34567' },
         ];
 
         setPrograms(mockPrograms);
@@ -94,7 +95,7 @@ export function ProgramAssignmentSection() {
       } else {
         // Real API calls
         const [programsResponse, usersResponse] = await Promise.all([
-          programsApi.get(`/${user.userId}`),
+          programsApi.get(`/`),
           authApi.get('/users'),
         ]);
 

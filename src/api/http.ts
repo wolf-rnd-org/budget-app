@@ -10,8 +10,8 @@ export function isMockMode(): boolean {
 // Auth API instance
 export const authApi = axios.create({
   baseURL: isMockMode() 
-    ? '/mocks/auth' : '/mocks/auth',
-    // : import.meta.env.VITE_AUTH_SERVER,
+    ? '/mocks/auth' 
+    : import.meta.env.VITE_AUTH_BASE_URL,
   timeout: 10000,
 });
 
