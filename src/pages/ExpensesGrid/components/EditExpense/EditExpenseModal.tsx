@@ -20,8 +20,12 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
   const [newInvoiceFile, setNewInvoiceFile] = React.useState<File | null>(null);
   const [newBankFile, setNewBankFile] = React.useState<File | null>(null);
 
+  const [programs, setPrograms] = React.useState<Array<{ id: string; name: string }>>([]);
+
+
   const [formData, setFormData] = React.useState({
     budget: 0,
+    programId: "",
     project: '',
     date: '',
     categories: [] as string[],
@@ -46,7 +50,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
         if (isMockMode()) {
           // Mock response - simulate API delay
           await new Promise(resolve => setTimeout(resolve, 500));
-          
+
           // Find expense from mock data (you'd typically import this)
           const mockExpense: Expense = {
             id: expenseId,
@@ -65,10 +69,11 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
             status: "pending",
             user_id: "101"
           };
-          
+
           setExpense(mockExpense);
           setFormData({
             budget: mockExpense.budget,
+            programId: "", // אין כרגע במוק
             project: mockExpense.project,
             date: mockExpense.date,
             categories: Array.isArray(mockExpense.categories) ? mockExpense.categories : [mockExpense.categories],
@@ -83,11 +88,15 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
         } else {
           const response = await budgetApi.get(`/budget/expenses/${expenseId}`);
           const expenseData = response.data;
-          
+
           setExpense(expenseData);
           setFormData({
             budget: expenseData.budget,
-            project: expenseData.project,
+            programId: expenseData.program?.id
+              || expenseData.program_id_rec
+              || expenseData.program_record_id
+              || "", // אם אין כרגע — יבחרו מה־Select
+            project: expenseData.project || "",
             date: expenseData.date,
             categories: Array.isArray(expenseData.categories) ? expenseData.categories : [expenseData.categories],
             amount: expenseData.amount,
@@ -109,6 +118,26 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
 
     fetchExpense();
   }, [isOpen, expenseId]);
+
+  // useEffect נוסף, פעם אחת
+  React.useEffect(() => {
+    if (!isOpen) return;
+    (async () => {
+      try {
+        const res = await budgetApi.get("//programs");//לשאול את נעמי על url
+        // תמכי גם ב-res.data.items וגם ב-res.data
+        const raw = Array.isArray(res.data?.items) ? res.data.items : res.data;
+        const list = (raw || []).map((p: any) => ({
+          id: p.id ?? p.recordId ?? p.airtableId,    // מזהה רשומה
+          name: p.name ?? p.title ?? p.program_name, // שם לתצוגה
+        }));
+        setPrograms(list);
+      } catch (e) {
+        console.error("load programs failed", e);
+      }
+    })();
+  }, [isOpen]);
+
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -166,13 +195,22 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
       setError('כתובת אימייל לא תקינה');
       return false;
     }
+    if (!formData.programId) {
+      setError('יש לבחור פרויקט');
+      return false;
+    }
     if (formData.categories.length === 0) {
       setError('יש לבחור לפחות קטגוריה אחת');
       return false;
     }
     return true;
   };
-
+  React.useEffect(() => {
+    // אפשר: איפוס מלא, או לסנן מול האופציות ב-CategoriesField
+    if (formData.programId) {
+      setFormData(prev => ({ ...prev, categories: [] }));
+    }
+  }, [formData.programId]);
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -228,6 +266,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
     setExpense(null);
     setFormData({
       budget: 0,
+      programId: "",
       project: '',
       date: '',
       categories: [],
@@ -345,17 +384,22 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                         required
                       />
                     </div>
-
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">פרויקט *</label>
-                      <input
-                        type="text"
-                        value={formData.project}
-                        onChange={(e) => handleInputChange('project', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      <select
+                        value={formData.programId}
+                        onChange={(e) => handleInputChange('programId', e.target.value)}
+                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                         required
-                      />
+                      >
+                        <option value="" disabled>בחרי פרויקט…</option>
+                        {programs.map(p => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                     
                     </div>
+
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">תיאור החשבונית *</label>
@@ -402,7 +446,9 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                 {/* Categories Section */}
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">קטגוריות *</h3>
+                  
                   <CategoriesField
+                    program_id={formData.programId}              // ⬅️ חדש
                     selectedCategories={formData.categories}
                     onChange={(categories) => handleInputChange('categories', categories)}
                   />
@@ -411,7 +457,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                 {/* Files Section */}
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">קבצים מצורפים</h3>
-                  
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Invoice File */}
                     <div>
@@ -422,9 +468,9 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                             <FileText className="w-5 h-5 text-blue-600" />
                             <div className="flex-1">
                               <p className="text-sm font-medium text-blue-800">חשבונית קיימת</p>
-                              <a 
-                                href={expense.invoice_file} 
-                                target="_blank" 
+                              <a
+                                href={expense.invoice_file}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-blue-600 hover:underline"
                               >
@@ -433,7 +479,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                             </div>
                           </div>
                         )}
-                        
+
                         {newInvoiceFile && (
                           <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
                             <CheckCircle className="w-5 h-5 text-green-600" />
@@ -472,9 +518,9 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                             <FileText className="w-5 h-5 text-green-600" />
                             <div className="flex-1">
                               <p className="text-sm font-medium text-green-800">פרטי בנק קיימים</p>
-                              <a 
-                                href={expense.bank_details_file} 
-                                target="_blank" 
+                              <a
+                                href={expense.bank_details_file}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="text-xs text-green-600 hover:underline"
                               >
@@ -483,7 +529,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                             </div>
                           </div>
                         )}
-                        
+
                         {newBankFile && (
                           <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center gap-3">
                             <CheckCircle className="w-5 h-5 text-green-600" />

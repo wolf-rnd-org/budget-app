@@ -2,6 +2,7 @@ import React from 'react';
 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
 import { documentsApi, isMockMode } from '@/api/http';
 import { ParsedInvoiceData } from './AddExpenseWizard';
+import UploadFlowIndicator from './UploadFlowIndicator';
 
 interface InvoiceUploadStepProps {
   onComplete: (data: ParsedInvoiceData) => void;
@@ -31,7 +32,26 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
   const [bankFile, setBankFile] = React.useState<File | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [phase, setPhase] = React.useState<"idle" | "uploading" | "analyzing" | "done" | "error">("idle");
+  const [progress, setProgress] = React.useState(0);
+  React.useEffect(() => {
+    if (!invoiceFile) {
+      setPhase("idle");
+      setProgress(0);
+    }
+  }, [invoiceFile]);
+  React.useEffect(() => {
+    if (phase !== "uploading") return;
 
+    const t = window.setTimeout(() => {
+      // נחליף ל-analyzing רק אם עדיין ב-uploading (לא שגיאה/סיום)
+      setPhase(prev => (prev === "uploading" ? "analyzing" : prev));
+      // בוסט קטן כדי שהפס ייראה זז
+      setProgress(p => Math.max(p, 60));
+    }, 1000);
+
+    return () => clearTimeout(t);
+  }, [phase]);
   const handleInvoiceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
@@ -65,10 +85,19 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
     try {
       setLoading(true);
       setError(null);
-
+      // תהליך: העלאה → ניתוח → סיום
+      setPhase("uploading");
+      setProgress(10);
       if (isMockMode()) {
-        // Mock response with sample data
-        await new Promise(resolve => setTimeout(resolve, 1500)); // Simulate upload time
+        setPhase("uploading");
+        setProgress(30);
+        await new Promise(r => setTimeout(r, 500));
+
+        // גם אם האפקט כבר החליף ל-analyzing, זה לא יזיק:
+        setPhase("analyzing");
+        setProgress(75);
+        await new Promise(r => setTimeout(r, 700));
+
 
         const mockData: ParsedInvoiceData = {
           supplier_name: "ספק לדוגמה בע\"מ",
@@ -80,6 +109,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
           bank_details_file: bankFile ? "mock-bank-details-url" : undefined,
           supplier_email: "supplier@example.com"
         };
+        setProgress(100); setPhase("done");
 
         onComplete(mockData);
         return;
@@ -93,28 +123,43 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
       }
 
       const response = await documentsApi.post('/documents/upload-invoice', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
+        headers: { 'Content-Type': 'multipart/form-data' },
+       onUploadProgress: (e: import('axios').AxiosProgressEvent) => {
+  if (e.total) {
+    const pct = Math.round((e.loaded / e.total) * 100);
+    setProgress(Math.max(10, Math.min(100, pct)));
+    if (pct >= 100) {
+      setPhase(prev => (prev === "uploading" ? "analyzing" : prev));
+    }
+  }
+},
       });
 
+      setPhase("analyzing");
+      setProgress(95);
+
+      setProgress(100);
+      setPhase("done");
       onComplete(normalizeServerInvoice(response.data));
     } catch (err) {
-      setError('שגיאה בהעלאת הקבצים. אנא נסה שוב.');
       console.error('Upload error:', err);
+      setPhase("error");
+      setError('שגיאה בהעלאת הקבצים. אנא נסה שוב.');
     } finally {
       setLoading(false);
     }
   };
-
   return (
+
     <div className="p-8">
       <div className="max-w-2xl mx-auto">
         <div className="text-center mb-8">
           <h3 className="text-xl font-semibold text-gray-900 mb-2">העלאת קבצים</h3>
           <p className="text-gray-600">העלה את קובץ החשבונית ופרטי הבנק (אופציונלי)</p>
         </div>
-
+        <div className="mt-4 mb-6" aria-live="polite">
+          <UploadFlowIndicator phase={phase} progress={progress} />
+        </div>
         <div className="space-y-6">
           {/* Invoice Upload */}
           <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
