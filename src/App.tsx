@@ -98,9 +98,9 @@ function App() {
             <Route 
               path="/expenses" 
               element={
-                // <ProtectedRoute requiredFeatures={['expenses.view']}>
+                <ProtectedRoute>
                   <ExpensesGridPage />
-                // </ProtectedRoute>
+                </ProtectedRoute>
               }
             >
               <Route 
@@ -131,9 +131,9 @@ function App() {
             <Route 
               path="/" 
               element={
-                // <ProtectedRoute requiredFeatures={['expenses.view']}>
+                <ProtectedRoute>
                   <ExpensesGridPage />
-                // </ProtectedRoute>
+                </ProtectedRoute>
               } 
             />
           </Routes>

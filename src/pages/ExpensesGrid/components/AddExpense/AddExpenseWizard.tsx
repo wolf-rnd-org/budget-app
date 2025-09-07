@@ -1,7 +1,8 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { InvoiceUploadStep } from './InvoiceUploadStep';
-import { ExpenseReviewStep } from './ExpenseReviewStep';
+import AIExtractedStep from './AIExtractedStep';
+import AdditionalDetailsStep from './AdditionalDetailsStep';
 import { WizardHeader } from './WizardHeader';
 
 interface AddExpenseWizardProps {
@@ -29,13 +30,34 @@ export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizar
   const [currentStep, setCurrentStep] = React.useState(1);
   const [parsedData, setParsedData] = React.useState<ParsedInvoiceData | null>(null);
 
+  // Lock background scroll while the wizard is open
+  React.useEffect(() => {
+    if (!isOpen) return;
+    const originalOverflow = document.body.style.overflow;
+    const originalPaddingRight = document.body.style.paddingRight;
+    // Avoid layout shift from scrollbar removal
+    const scrollBarWidth = window.innerWidth - document.documentElement.clientWidth;
+    if (scrollBarWidth > 0) {
+      document.body.style.paddingRight = `${scrollBarWidth}px`;
+    }
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = originalOverflow;
+      document.body.style.paddingRight = originalPaddingRight;
+    };
+  }, [isOpen]);
+
   const handleStepComplete = (data: ParsedInvoiceData) => {
     setParsedData(data);
     setCurrentStep(2);
   };
 
-  const handleBack = () => {
+  const handleBackToUpload = () => {
     setCurrentStep(1);
+  };
+
+  const handleBackToAI = () => {
+    setCurrentStep(2);
   };
 
   const handleSuccess = (expense: any) => {
@@ -56,7 +78,7 @@ export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizar
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+    <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overscroll-contain">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
@@ -70,15 +92,24 @@ export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizar
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-80px)]">
+        <div className="overflow-y-auto max-h-[calc(90vh-80px)] overscroll-contain">
           {currentStep === 1 && (
             <InvoiceUploadStep onComplete={handleStepComplete} />
           )}
-          
+
           {currentStep === 2 && parsedData && (
-            <ExpenseReviewStep
+            <AIExtractedStep
               parsedData={parsedData}
-              onBack={handleBack}
+              onBack={handleBackToUpload}
+              onNext={(updated) => { setParsedData(updated); setCurrentStep(3); }}
+              onCancel={handleClose}
+            />
+          )}
+
+          {currentStep === 3 && parsedData && (
+            <AdditionalDetailsStep
+              parsedData={parsedData}
+              onBack={handleBackToAI}
               onSuccess={handleSuccess}
               onCancel={handleClose}
             />

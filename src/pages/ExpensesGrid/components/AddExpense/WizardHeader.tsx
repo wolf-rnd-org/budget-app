@@ -1,5 +1,5 @@
 import React from 'react';
-import { Upload, FileText } from 'lucide-react';
+import { Upload, FileText, ListChecks } from 'lucide-react';
 
 interface WizardHeaderProps {
   currentStep: number;
@@ -40,10 +40,28 @@ export function WizardHeader({ currentStep }: WizardHeaderProps) {
           <span className={`text-sm font-medium ${
             currentStep >= 2 ? 'text-blue-600' : 'text-gray-500'
           }`}>
-            סקירה ויצירה
+            נתונים שחולצו
+          </span>
+        </div>
+
+        {/* Connector */}
+        <div className={`w-8 h-0.5 ${currentStep >= 3 ? 'bg-blue-600' : 'bg-gray-300'}`} />
+
+        {/* Step 3 */}
+        <div className="flex items-center gap-2">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+            currentStep >= 3 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+          }`}>
+            <ListChecks className="w-4 h-4" />
+          </div>
+          <span className={`text-sm font-medium ${
+            currentStep >= 3 ? 'text-blue-600' : 'text-gray-500'
+          }`}>
+            פרטים נוספים
           </span>
         </div>
       </div>
     </div>
   );
 }
+
