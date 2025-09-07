@@ -38,7 +38,7 @@ export const expensesApi = axios.create({
 });
 
 export const documentsApi = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
 // Common interceptors

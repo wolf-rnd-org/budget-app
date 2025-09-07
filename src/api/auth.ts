@@ -22,7 +22,7 @@ export interface AuthResponse {
 const AUTH_BASE_URL = String(import.meta.env.VITE_AUTH_BASE_URL || '').replace(/\/+$/, '');
 const APPLICATION_NAME = 'BUDGETS';
 
-export async function getCurrentUser(userId: number): Promise<MeResponse> {
+export async function getCurrentUser(): Promise<MeResponse> {
   if (isMockMode()) {
     const response = await authApi.get('/me.json', { withCredentials: true });
     return response.data as MeResponse;
@@ -31,8 +31,7 @@ export async function getCurrentUser(userId: number): Promise<MeResponse> {
   const response = await authApi.get(url, {
     withCredentials: true,
     params: {
-      application_name: APPLICATION_NAME,
-      user_id: userId,
+      application_name: APPLICATION_NAME
     },
   });
   return response.data as MeResponse;

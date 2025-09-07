@@ -3,5 +3,5 @@
   "email": "user@example.com",
   "firstName": "Naomi",
   "lastName": "Masing",
-  "actions": ["program_budgets.view", "expenses.view", "expenses.create", "reports.view", "users.update"]
+  "actions": ["program_budgets.view", "expenses.view", "expenses.create", "reports.view", "users.create"]
 }

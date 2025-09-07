@@ -98,9 +98,9 @@ function App() {
             <Route 
               path="/expenses" 
               element={
-                <ProtectedRoute requiredFeatures={['expenses.view']}>
+                // <ProtectedRoute requiredFeatures={['expenses.view']}>
                   <ExpensesGridPage />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             >
               <Route 
@@ -115,7 +115,7 @@ function App() {
             <Route 
               path="/users" 
               element={
-                <ProtectedRoute requiredFeatures={['users.update']}>
+                <ProtectedRoute requiredFeatures={['users.create']}>
                   <UserManagementPage />
                 </ProtectedRoute>
               } 
@@ -131,9 +131,9 @@ function App() {
             <Route 
               path="/" 
               element={
-                <ProtectedRoute requiredFeatures={['expenses.view']}>
+                // <ProtectedRoute requiredFeatures={['expenses.view']}>
                   <ExpensesGridPage />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               } 
             />
           </Routes>

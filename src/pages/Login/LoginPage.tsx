@@ -59,7 +59,7 @@ export function LoginPage() {
       // setUser(response.user);
       setSuccess('התחברת בהצלחה!');
 
-      const me = await getCurrentUser(response.user.userId);
+      const me = await getCurrentUser();
       hydrateFromMe(me);
       // Store token if provided
       // if (response.token) {

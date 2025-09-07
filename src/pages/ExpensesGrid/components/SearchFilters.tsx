@@ -24,17 +24,17 @@ export function SearchFilters({
   dateFrom,
   setDateFrom,
   dateTo,
-  setDateTo
+  setDateTo,
 }: SearchFiltersProps) {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-8">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">סינון וחיפוש</h3>
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">חיפוש וסינון</h3>
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="חיפוש חופשי..."
+            placeholder="חיפוש בהוצאות..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -47,9 +47,11 @@ export function SearchFilters({
           className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
         >
           <option value="">כל הסטטוסים</option>
-          <option value="approved">מאושר</option>
-          <option value="pending">ממתין</option>
-          <option value="rejected">נדחה</option>
+          <option value="new">חדש – ממתין להנה"ח</option>
+          <option value="sent_for_payment">נשלחה לתשלום</option>
+          <option value="paid">שולם – ממתין לקבלה</option>
+          <option value="receipt_uploaded">הועלתה קבלה</option>
+          <option value="closed">הסתיים</option>
         </select>
 
         <select
@@ -57,7 +59,7 @@ export function SearchFilters({
           onChange={(e) => setPriorityFilter(e.target.value)}
           className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
         >
-          <option value="">כל הדחיפויות</option>
+          <option value="">כל העדיפויות</option>
           <option value="urgent">דחוף</option>
           <option value="normal">רגיל</option>
         </select>
@@ -87,3 +89,4 @@ export function SearchFilters({
     </div>
   );
 }
+

@@ -1,4 +1,4 @@
-import React from 'react';
+﻿import React from 'react';
 import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
@@ -98,7 +98,12 @@ export function ExpensesTable({
           userId: user.userId, 
           page: 1, 
           pageSize ,
-          programId: programId
+          programId: programId,
+          searchText,
+          status: statusFilter || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          priority: (priorityFilter as any) || undefined,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -112,7 +117,7 @@ export function ExpensesTable({
     }
 
     fetchInitialExpenses();
-  }, [user?.userId, programId]);
+  }, [user?.userId, programId, searchText, statusFilter, dateFrom, dateTo, priorityFilter]);
 
   const loadMoreExpenses = React.useCallback(async () => {
     if (loadingMore || !hasMore || !user?.userId || !programId) return;
@@ -124,7 +129,12 @@ export function ExpensesTable({
         userId: user.userId, 
         page: nextPage, 
         pageSize ,
-        programId: programId
+        programId: programId,
+        searchText,
+        status: statusFilter || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        priority: (priorityFilter as any) || undefined,
       });
       setExpenses(prev => [...prev, ...result.data]);
       setHasMore(result.hasMore);
@@ -148,21 +158,8 @@ export function ExpensesTable({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadMoreExpenses]);
 
-  // Filter expenses based on search criteria
-  const filteredExpenses = expenses.filter(expense => {
-    const matchesText = searchText === '' || 
-      expense.project.toLowerCase().includes(searchText.toLowerCase()) ||
-      expense.supplier_name.toLowerCase().includes(searchText.toLowerCase()) ||
-      expense.invoice_description.toLowerCase().includes(searchText.toLowerCase());
-    
-    const matchesStatus = statusFilter === '' || expense.status === statusFilter;
-    const matchesPriority = priorityFilter === '' || expense.priority === priorityFilter;
-    
-    const matchesDateFrom = dateFrom === '' || new Date(expense.date) >= new Date(dateFrom);
-    const matchesDateTo = dateTo === '' || new Date(expense.date) <= new Date(dateTo);
-    
-    return matchesText && matchesStatus && matchesPriority && matchesDateFrom && matchesDateTo;
-  });
+  // Server-side filtering now; render what server returns
+  const filteredExpenses = expenses;
 
   // Early return if no user
   if (!user?.userId) {
@@ -196,26 +193,34 @@ export function ExpensesTable({
     );
   }
   const getStatusStyle = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'pending':
+    switch ((status || '').toLowerCase()) {
+      case 'new':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'sent_for_payment':
         return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-200';
+      case 'paid':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'receipt_uploaded':
+        return 'bg-sky-100 text-sky-800 border-sky-200';
+      case 'closed':
+        return 'bg-gray-200 text-gray-800 border-gray-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status && status.toLowerCase()) {
-      case 'approved':
-        return 'מאושר';
-      case 'pending':
-        return 'ממתין';
-      case 'rejected':
-        return 'נדחה';
+    const getStatusText = (status: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'new':
+        return 'חדש – ממתין להנה"ח';
+      case 'sent_for_payment':
+        return 'נשלחה לתשלום';
+      case 'paid':
+        return 'שולם – ממתין לקבלה';
+      case 'receipt_uploaded':
+        return 'הועלתה קבלה';
+      case 'closed':
+        return 'הסתיים';
       default:
         return status;
     }
@@ -448,3 +453,4 @@ export function ExpensesTable({
     </div>
   );
 }
+

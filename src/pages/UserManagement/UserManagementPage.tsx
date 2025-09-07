@@ -11,20 +11,16 @@ export function UserManagementPage() {
   const [error, setError] = React.useState<string | null>(null);
 
   // Check permissions
-  debugger
   const userActions = user?.actions || [];
-  const canUpdateUsers = userActions.includes('users.update');
   const canCreateUsers = userActions.includes('users.create');
 
   // Show a banner error if user cannot create users
   React.useEffect(() => {
-    debugger
     if (!canCreateUsers) {
       setError("You don't have permission to create users.");
     }
   }, [canCreateUsers]);
-
-  if (!canUpdateUsers) {
+  if (!canCreateUsers) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50 flex items-center justify-center p-4">
         <div className="bg-white rounded-2xl shadow-xl p-8 text-center max-w-md">
@@ -33,6 +29,9 @@ export function UserManagementPage() {
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-2">אין הרשאה</h2>
           <p className="text-gray-600 mb-6">
+            sldkfjoidlsfldskfjdslk
+            asdfesdfsew
+            ae
             אין לך הרשאה לנהל משתמשים. אנא פנה למנהל המערכת.
           </p>
           <button
