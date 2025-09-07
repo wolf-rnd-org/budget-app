@@ -2,8 +2,10 @@ import React from 'react';
 import { X } from 'lucide-react';
 
 interface CategoriesFieldProps {
+  program_id:string |"";
   selectedCategories: string[];
   onChange: (categories: string[]) => void;
+    disable?: string;
 }
 
 const availableCategories = [
