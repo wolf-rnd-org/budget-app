@@ -16,7 +16,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "orelsystems@gmail.com",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "urgent"
   },
   {
     "id": "exp_002",
@@ -35,7 +36,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "kpt037520809@gmail.com",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_003",
@@ -54,7 +56,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "acc@dataprint.co.il",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_004",
@@ -73,7 +76,8 @@
     "bank_details_file": "",
     "supplier_email": "office2@aviva-e.co.il",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "urgent"
   },
   {
     "id": "exp_005",
@@ -92,7 +96,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_006",
@@ -111,7 +116,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "a.ssmartprint@gmail.com",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_007",
@@ -130,7 +136,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "office@nessled.com",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_008",
@@ -149,7 +156,8 @@
     "bank_details_file": "",
     "supplier_email": "office@kstisrael.co.il",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_009",
@@ -168,7 +176,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "as0573106060@gmail.com",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_010",
@@ -187,7 +196,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "r0533136412@gmail.com",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_011",
@@ -206,7 +216,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_012",
@@ -225,7 +236,8 @@
     "bank_details_file": "",
     "supplier_email": "efratmanmusic@gmail.com",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_013",
@@ -244,7 +256,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "S0548506035@GMAIL.COM",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_014",
@@ -263,7 +276,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "?",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_015",
@@ -282,7 +296,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_016",
@@ -301,7 +316,8 @@
     "bank_details_file": "",
     "supplier_email": "sales@logotex.co.il",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_017",
@@ -320,7 +336,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "ml3203232@gmail.com",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "urgent"
   },
   {
     "id": "exp_018",
@@ -339,7 +356,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "a.ssmartprint@gmail.com",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_019",
@@ -358,7 +376,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "shlomo2776@gmail.com",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_020",
@@ -377,7 +396,8 @@
     "bank_details_file": "",
     "supplier_email": "efratmanmusic@gmail.com",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_021",
@@ -396,7 +416,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "orelsystems@gmail.com",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_022",
@@ -415,7 +436,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "kpt037520809@gmail.com",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_023",
@@ -434,7 +456,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "acc@dataprint.co.il",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_024",
@@ -453,7 +476,8 @@
     "bank_details_file": "",
     "supplier_email": "office2@aviva-e.co.il",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_025",
@@ -472,7 +496,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_026",
@@ -491,7 +516,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "a.ssmartprint@gmail.com",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_027",
@@ -510,7 +536,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "office@nessled.com",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_028",
@@ -529,7 +556,8 @@
     "bank_details_file": "",
     "supplier_email": "office@kstisrael.co.il",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_029",
@@ -548,7 +576,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "as0573106060@gmail.com",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_030",
@@ -567,7 +596,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "r0533136412@gmail.com",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_031",
@@ -586,7 +616,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_032",
@@ -605,7 +636,8 @@
     "bank_details_file": "",
     "supplier_email": "efratmanmusic@gmail.com",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_033",
@@ -624,7 +656,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "S0548506035@GMAIL.COM",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_034",
@@ -643,7 +676,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "?",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_035",
@@ -662,7 +696,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_036",
@@ -681,7 +716,8 @@
     "bank_details_file": "",
     "supplier_email": "sales@logotex.co.il",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_037",
@@ -700,7 +736,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "ml3203232@gmail.com",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_038",
@@ -719,7 +756,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "a.ssmartprint@gmail.com",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_039",
@@ -738,7 +776,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "shlomo2776@gmail.com",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_040",
@@ -757,7 +796,8 @@
     "bank_details_file": "",
     "supplier_email": "efratmanmusic@gmail.com",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_041",
@@ -776,7 +816,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "orelsystems@gmail.com",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_042",
@@ -795,7 +836,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "kpt037520809@gmail.com",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_043",
@@ -814,7 +856,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "acc@dataprint.co.il",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_044",
@@ -833,7 +876,8 @@
     "bank_details_file": "",
     "supplier_email": "office2@aviva-e.co.il",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_045",
@@ -852,7 +896,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "",
     "status": "שולם הסתים טיפול",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_046",
@@ -871,7 +916,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "a.ssmartprint@gmail.com",
     "status": "חדש - ממתין להנהל''ח",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_047",
@@ -890,7 +936,8 @@
     "bank_details_file": "https://example.com/bank/details.pdf",
     "supplier_email": "office@nessled.com",
     "status": "pending",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_048",
@@ -909,7 +956,8 @@
     "bank_details_file": "",
     "supplier_email": "office@kstisrael.co.il",
     "status": "approved",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_049",
@@ -928,7 +976,8 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/rec7RYBQJ85b9oimD/fldhzmeHDIJtc8jTi/att6arSHJgwGZ61EB",
     "supplier_email": "as0573106060@gmail.com",
     "status": "הועבר לתשלום",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   },
   {
     "id": "exp_050",
@@ -947,6 +996,7 @@
     "bank_details_file": "https://airtable.com/app5rFUGWxMmUtlBU/tbl5603cDVKsEbqXX/recK5loF3wrsOGMoD/fldhzmeHDIJtc8jTi/att4keRHLGme9XQ9O",
     "supplier_email": "r0533136412@gmail.com",
     "status": "שולם ממתין לקבלה",
-    "user_id": 101
+    "user_id": 101,
+    "priority": "normal"
   }
 ]

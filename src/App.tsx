@@ -4,6 +4,8 @@ import { ThemeProvider, createTheme, CssBaseline } from '@mui/material';
 import { LoginPage } from '@/pages/Login';
 import { ExpensesGridPage } from '@/pages/ExpensesGrid';
 import { NewExpensePage } from '@/pages/NewExpense';
+import { UserManagementPage } from '@/pages/UserManagement';
+import { AssistantsManagementPage } from '@/pages/AssistantsManagement';
 import { ProtectedRoute, UserProfile } from '@/components';
 import { useAuthStore } from '@/stores/authStore';
 import { getCurrentUser } from '@/api/auth';
@@ -39,6 +41,12 @@ function Navbar() {
                   className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
                 >
                   הוצאות
+                </Link>
+                <Link
+                  to="/users"
+                  className="text-gray-600 hover:text-gray-900 font-medium transition-colors"
+                >
+                  ניהול משתמשים
                 </Link>
               </div>
             )}
@@ -90,9 +98,9 @@ function App() {
             <Route 
               path="/expenses" 
               element={
-                <ProtectedRoute requiredFeatures={['expenses.view']}>
+                // <ProtectedRoute requiredFeatures={['expenses.view']}>
                   <ExpensesGridPage />
-                </ProtectedRoute>
+                // </ProtectedRoute>
               }
             >
               <Route 
@@ -105,11 +113,27 @@ function App() {
               />
             </Route>
             <Route 
-              path="/" 
+              path="/users" 
+              element={
+                <ProtectedRoute requiredFeatures={['users.create']}>
+                  <UserManagementPage />
+                </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/profile/assistants" 
               element={
                 <ProtectedRoute requiredFeatures={['expenses.view']}>
-                  <ExpensesGridPage />
+                  <AssistantsManagementPage />
                 </ProtectedRoute>
+              } 
+            />
+            <Route 
+              path="/" 
+              element={
+                // <ProtectedRoute requiredFeatures={['expenses.view']}>
+                  <ExpensesGridPage />
+                // </ProtectedRoute>
               } 
             />
           </Routes>

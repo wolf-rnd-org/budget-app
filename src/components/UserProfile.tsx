@@ -1,11 +1,13 @@
 import React from 'react';
-import { User, ChevronDown, Settings, Key } from 'lucide-react';
+import { User, ChevronDown, Users, Key } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { LogoutButton } from './LogoutButton';
 import { ChangePasswordModal } from './ChangePasswordModal';
+import { useNavigate } from 'react-router-dom';
 
 export function UserProfile() {
   const { user } = useAuthStore();
+  const navigate = useNavigate();
   const [isOpen, setIsOpen] = React.useState(false);
   const [showChangePassword, setShowChangePassword] = React.useState(false);
 
@@ -15,6 +17,11 @@ export function UserProfile() {
   const handleChangePassword = () => {
     setIsOpen(false);
     setShowChangePassword(true);
+  };
+
+  const handleManageAssistants = () => {
+    setIsOpen(false);
+    navigate('/profile/assistants');
   };
 
   return (
@@ -64,14 +71,11 @@ export function UserProfile() {
               {/* Menu Items */}
               <div className="py-2">
                 <button
-                  onClick={() => {
-                    setIsOpen(false);
-                    // Navigate to settings page when implemented
-                  }}
+                  onClick={handleManageAssistants}
                   className="w-full text-right px-4 py-3 hover:bg-gray-50 text-gray-700 hover:text-gray-900 transition-colors flex items-center gap-3"
                 >
-                  <Settings className="w-4 h-4" />
-                  הגדרות
+                  <Users className="w-4 h-4" />
+                  ניהול עוזרים
                 </button>
                 
                 <button

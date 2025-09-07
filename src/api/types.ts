@@ -22,6 +22,7 @@ export type Expense = {
   supplier_email: string;
   status: string;
   user_id: number | string;
+  priority?: string;
 };
 
 export interface LoginCredentials {

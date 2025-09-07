@@ -1,15 +1,18 @@
-import React from 'react';
-import { Edit3, Trash2, ChevronDown, ChevronUp, Search } from 'lucide-react';
+﻿import React from 'react';
+import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { getExpenses } from '@/api/expenses';
+import { budgetApi, isMockMode } from '@/api/http';
 
 interface ExpensesTableProps {
   onEdit: (expense: Expense, event: React.MouseEvent) => void;
   onDelete: (expense: Expense, event: React.MouseEvent) => void;
+  onUrgentToggle?: (expense: Expense) => void;
   searchText: string;
   statusFilter: string;
+  priorityFilter: string;
   dateFrom: string;
   dateTo: string;
   programId: string | null;
@@ -18,8 +21,10 @@ interface ExpensesTableProps {
 export function ExpensesTable({
   onEdit,
   onDelete,
+  onUrgentToggle,
   searchText,
   statusFilter,
+  priorityFilter,
   dateFrom,
   dateTo,
   programId
@@ -38,6 +43,48 @@ export function ExpensesTable({
     setExpandedRow(expandedRow === expenseId ? null : expenseId);
   };
 
+  const handleMarkUrgent = async (expense: Expense, event: React.MouseEvent) => {
+    event.stopPropagation();
+    
+    try {
+      const newPriority = expense.priority === 'urgent' ? 'normal' : 'urgent';
+      
+      if (isMockMode()) {
+        // Mock API call
+        await new Promise(resolve => setTimeout(resolve, 500));
+        
+        // Update local state optimistically
+        setExpenses(prev => prev.map(exp => 
+          exp.id === expense.id 
+            ? { ...exp, priority: newPriority }
+            : exp
+        ));
+        
+        if (onUrgentToggle) {
+          onUrgentToggle({ ...expense, priority: newPriority });
+        }
+      } else {
+        // Real API call
+        const response = await budgetApi.patch(`/budget/expenses/${expense.id}`, {
+          priority: newPriority
+        });
+        
+        // Update local state
+        setExpenses(prev => prev.map(exp => 
+          exp.id === expense.id 
+            ? { ...exp, priority: newPriority }
+            : exp
+        ));
+        
+        if (onUrgentToggle) {
+          onUrgentToggle(response.data);
+        }
+      }
+    } catch (err) {
+      console.error('Error updating expense priority:', err);
+    }
+  };
+
   React.useEffect(() => {
     if (!user?.userId || !programId) {
       setLoading(false);
@@ -51,7 +98,12 @@ export function ExpensesTable({
           userId: user.userId, 
           page: 1, 
           pageSize ,
-          programId: programId
+          programId: programId,
+          searchText,
+          status: statusFilter || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          priority: (priorityFilter as any) || undefined,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -65,7 +117,7 @@ export function ExpensesTable({
     }
 
     fetchInitialExpenses();
-  }, [user?.userId, programId]);
+  }, [user?.userId, programId, searchText, statusFilter, dateFrom, dateTo, priorityFilter]);
 
   const loadMoreExpenses = React.useCallback(async () => {
     if (loadingMore || !hasMore || !user?.userId || !programId) return;
@@ -77,7 +129,12 @@ export function ExpensesTable({
         userId: user.userId, 
         page: nextPage, 
         pageSize ,
-        programId: programId
+        programId: programId,
+        searchText,
+        status: statusFilter || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        priority: (priorityFilter as any) || undefined,
       });
       setExpenses(prev => [...prev, ...result.data]);
       setHasMore(result.hasMore);
@@ -101,21 +158,8 @@ export function ExpensesTable({
     return () => window.removeEventListener('scroll', handleScroll);
   }, [loadMoreExpenses]);
 
-  // Filter expenses based on search criteria
+  // Server-side filtering now; render what server returns
   const filteredExpenses = expenses;
-  // .filter(expense => {
-  //   const matchesText = searchText === '' || 
-  //     expense.project.toLowerCase().includes(searchText.toLowerCase()) ||
-  //     expense.supplier_name.toLowerCase().includes(searchText.toLowerCase()) ||
-  //     expense.invoice_description.toLowerCase().includes(searchText.toLowerCase());
-    
-  //   const matchesStatus = statusFilter === '' || expense.status === statusFilter;
-    
-  //   const matchesDateFrom = dateFrom === '' || new Date(expense.date) >= new Date(dateFrom);
-  //   const matchesDateTo = dateTo === '' || new Date(expense.date) <= new Date(dateTo);
-    
-  //   return matchesText && matchesStatus && matchesDateFrom && matchesDateTo;
-  // });
 
   // Early return if no user
   if (!user?.userId) {
@@ -149,26 +193,34 @@ export function ExpensesTable({
     );
   }
   const getStatusStyle = (status: string) => {
-    switch (status.toLowerCase()) {
-      case 'approved':
-        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-      case 'pending':
+    switch ((status || '').toLowerCase()) {
+      case 'new':
+        return 'bg-blue-100 text-blue-800 border-blue-200';
+      case 'sent_for_payment':
         return 'bg-amber-100 text-amber-800 border-amber-200';
-      case 'rejected':
-        return 'bg-red-100 text-red-800 border-red-200';
+      case 'paid':
+        return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+      case 'receipt_uploaded':
+        return 'bg-sky-100 text-sky-800 border-sky-200';
+      case 'closed':
+        return 'bg-gray-200 text-gray-800 border-gray-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
   };
 
-  const getStatusText = (status: string) => {
-    switch (status && status.toLowerCase()) {
-      case 'approved':
-        return 'מאושר';
-      case 'pending':
-        return 'ממתין';
-      case 'rejected':
-        return 'נדחה';
+    const getStatusText = (status: string) => {
+    switch ((status || '').toLowerCase()) {
+      case 'new':
+        return 'חדש – ממתין להנה"ח';
+      case 'sent_for_payment':
+        return 'נשלחה לתשלום';
+      case 'paid':
+        return 'שולם – ממתין לקבלה';
+      case 'receipt_uploaded':
+        return 'הועלתה קבלה';
+      case 'closed':
+        return 'הסתיים';
       default:
         return status;
     }
@@ -212,10 +264,19 @@ export function ExpensesTable({
               <React.Fragment key={expense.id}>
                 <tr 
                   onClick={() => onRowClick(expense.id)}
-                  className="hover:bg-gray-50 cursor-pointer transition-colors group"
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
+                    expense.priority === 'urgent' 
+                      ? 'bg-red-50 border-l-4 border-red-500' 
+                      : ''
+                  }`}
                 >
                   <td className="px-6 py-4">
-                    <div className="font-medium text-gray-900">{expense.supplier_name}</div>
+                    <div className="flex items-center gap-2">
+                      {expense.priority === 'urgent' && (
+                        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                      )}
+                      <div className="font-medium text-gray-900">{expense.supplier_name}</div>
+                    </div>
                     <div className="text-sm text-gray-500">{expense.invoice_description}</div>
                   </td>
                   <td className="px-6 py-4 text-gray-700">
@@ -233,6 +294,29 @@ export function ExpensesTable({
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
+                      <div className="relative group">
+                        <button
+                          onClick={(e) => handleMarkUrgent(expense, e)}
+                          className={`p-2 rounded-lg transition-all ${
+                            expense.priority === 'urgent'
+                              ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                              : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                          }`}
+                          title={expense.priority === 'urgent' ? 'הסר דחיפות' : 'סמן כדחוף'}
+                        >
+                          <AlertTriangle className="w-4 h-4" />
+                        </button>
+                        
+                        {/* Tooltip */}
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                          {expense.priority === 'urgent' 
+                            ? 'הסר דחיפות' 
+                            : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
+                          }
+                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                        </div>
+                      </div>
+                      
                       <button
                         onClick={(e) => onEdit(expense, e)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
@@ -369,3 +453,4 @@ export function ExpensesTable({
     </div>
   );
 }
+

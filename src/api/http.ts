@@ -10,8 +10,8 @@ export function isMockMode(): boolean {
 // Auth API instance
 export const authApi = axios.create({
   baseURL: isMockMode() 
-    ? '/mocks/auth' : '/mocks/auth',
-    // : import.meta.env.VITE_AUTH_BASE_URL,
+    ? '/mocks/auth' 
+    : import.meta.env.VITE_AUTH_BASE_URL,
   timeout: 10000,
 });
 
@@ -38,7 +38,7 @@ export const expensesApi = axios.create({
 });
 
 export const documentsApi = axios.create({
-  baseURL: import.meta.env.VITE_AUTH_BASE_URL,
+  baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 
 // Common interceptors

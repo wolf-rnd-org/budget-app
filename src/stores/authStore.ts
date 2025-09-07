@@ -14,10 +14,8 @@ interface AuthState {
   user: AuthUser | null;
   isLoading: boolean;
   currentProgramId: string | null;
-
   // חדש:
   actions: string[];
-
   programs: UserProgram[];
   programsLoading: boolean;
   programsError: string | null;

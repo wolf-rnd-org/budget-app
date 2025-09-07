@@ -28,6 +28,7 @@ export function ExpensesGridPage() {
   // Filter states
   const [searchText, setSearchText] = React.useState('');
   const [statusFilter, setStatusFilter] = React.useState('');
+  const [priorityFilter, setPriorityFilter] = React.useState('');
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
   const [showAddExpense, setShowAddExpense] = React.useState(false);
@@ -132,6 +133,13 @@ export function ExpensesGridPage() {
   const handleDelete = (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
     console.log('Delete expense:', expense.id);
+  };
+
+  const handleUrgentToggle = (updatedExpense: Expense) => {
+    // Update the expense in the local state
+    setExpenses(prev => prev.map(exp => 
+      exp.id === updatedExpense.id ? updatedExpense : exp
+    ));
   };
 
   const handleNewExpense = () => {
@@ -260,6 +268,8 @@ const handleExpenseCreated = async (newExpense: Expense) => {
           setSearchText={setSearchText}
           statusFilter={statusFilter}
           setStatusFilter={setStatusFilter}
+          priorityFilter={priorityFilter}
+          setPriorityFilter={setPriorityFilter}
           dateFrom={dateFrom}
           setDateFrom={setDateFrom}
           dateTo={dateTo}
@@ -269,8 +279,10 @@ const handleExpenseCreated = async (newExpense: Expense) => {
         <ExpensesTable
           onEdit={handleEdit}
           onDelete={handleDelete}
+          onUrgentToggle={handleUrgentToggle}
           searchText={searchText}
           statusFilter={statusFilter}
+          priorityFilter={priorityFilter}
           dateFrom={dateFrom}
           dateTo={dateTo}
           programId={currentProgramId}
