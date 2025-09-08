@@ -34,6 +34,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
   const [error, setError] = React.useState<string | null>(null);
   const [phase, setPhase] = React.useState<"idle" | "uploading" | "analyzing" | "done" | "error">("idle");
   const [progress, setProgress] = React.useState(0);
+  const [attemptedNext, setAttemptedNext] = React.useState(false);
   React.useEffect(() => {
     if (!invoiceFile) {
       setPhase("idle");
@@ -77,6 +78,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
   };
 
   const handleSubmit = async () => {
+    setAttemptedNext(true);
     if (!invoiceFile) {
       setError('יש להעלות קובץ חשבונית');
       return;
@@ -162,7 +164,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
         </div>
         <div className="space-y-6">
           {/* Invoice Upload */}
-          <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-300 hover:border-blue-400 transition-colors">
+          <div className={`bg-gray-50 rounded-xl p-6 border-2 border-dashed transition-colors ${attemptedNext && !invoiceFile ? 'border-red-500' : 'border-gray-300 hover:border-blue-400'}`}>
             <div className="text-center">
               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
                 <FileText className="w-6 h-6 text-blue-600" />

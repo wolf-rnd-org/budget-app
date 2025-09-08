@@ -65,6 +65,7 @@ export function ExpensesTable({
         }
       } else {
         // Real API call
+        debugger
         const response = await budgetApi.patch(`/budget/expenses/${expense.id}`, {
           priority: newPriority
         });
