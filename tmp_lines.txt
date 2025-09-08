@@ -1,0 +1,264 @@
+   1 import React from 'react';
+   2 import { Upload, FileText, AlertCircle, CheckCircle } from 'lucide-react';
+   3 import { documentsApi, isMockMode } from '@/api/http';
+   4 import { ParsedInvoiceData } from './AddExpenseWizard';
+   5 import UploadFlowIndicator from './UploadFlowIndicator';
+   6 
+   7 interface InvoiceUploadStepProps {
+   8   onComplete: (data: ParsedInvoiceData) => void;
+   9 }
+  10 
+  11 function normalizeServerInvoice(data: any): ParsedInvoiceData {
+  12   const bank = data.bank || {};
+  13   return {
+  14     supplier_name: data.supplier_name ?? "",
+  15     business_number: data.business_number ?? "",
+  16     invoice_type: data.invoice_type ?? "",
+  17     invoice_description: data.invoice_description ?? "",
+  18     amount: Number(data.amount) || 0,
+  19     project: data.project ?? "",
+  20     bank_details_file: data.bank_details_file ?? undefined,
+  21     supplier_email: data.supplier_email ?? "",
+  22     bank_name: (data.bank_name ?? bank.bank_name ?? "") || "",
+  23     bank_branch: (data.bank_branch ?? bank.bank_branch ?? "") || "",
+  24     bank_account: (data.bank_account ?? bank.bank_account ?? "") || "",
+  25     beneficiary: (data.beneficiary ?? bank.beneficiary ?? "") || "",
+  26   };
+  27 }
+  28 
+  29 
+  30 export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
+  31   const [invoiceFile, setInvoiceFile] = React.useState<File | null>(null);
+  32   const [bankFile, setBankFile] = React.useState<File | null>(null);
+  33   const [loading, setLoading] = React.useState(false);
+  34   const [error, setError] = React.useState<string | null>(null);
+  35   const [phase, setPhase] = React.useState<"idle" | "uploading" | "analyzing" | "done" | "error">("idle");
+  36   const [progress, setProgress] = React.useState(0);
+  37   const [attemptedNext, setAttemptedNext] = React.useState(false);
+  38   React.useEffect(() => {
+  39     if (!invoiceFile) {
+  40       setPhase("idle");
+  41       setProgress(0);
+  42     }
+  43   }, [invoiceFile]);
+  44   React.useEffect(() => {
+  45     if (phase !== "uploading") return;
+  46 
+  47     const t = window.setTimeout(() => {
+  48       // נחליף ל-analyzing רק אם עדיין ב-uploading (לא שגיאה/סיום)
+  49       setPhase(prev => (prev === "uploading" ? "analyzing" : prev));
+  50       // בוסט קטן כדי שהפס ייראה זז
+  51       setProgress(p => Math.max(p, 60));
+  52     }, 1000);
+  53 
+  54     return () => clearTimeout(t);
+  55   }, [phase]);
+  56   const handleInvoiceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  57     const file = event.target.files?.[0];
+  58     if (file) {
+  59       if (file.size > 10 * 1024 * 1024) { // 10MB limit
+  60         setError('קובץ החשבונית גדול מדי (מקסימום 10MB)');
+  61         return;
+  62       }
+  63       setInvoiceFile(file);
+  64       setError(null);
+  65     }
+  66   };
+  67 
+  68   const handleBankUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  69     const file = event.target.files?.[0];
+  70     if (file) {
+  71       if (file.size > 10 * 1024 * 1024) { // 10MB limit
+  72         setError('קובץ פרטי הבנק גדול מדי (מקסימום 10MB)');
+  73         return;
+  74       }
+  75       setBankFile(file);
+  76       setError(null);
+  77     }
+  78   };
+  79 
+  80   const handleSubmit = async () => {
+  81     setAttemptedNext(true);
+  82     if (!invoiceFile) {
+  83       setError('יש להעלות קובץ חשבונית');
+  84       return;
+  85     }
+  86 
+  87     try {
+  88       setLoading(true);
+  89       setError(null);
+  90       // תהליך: העלאה → ניתוח → סיום
+  91       setPhase("uploading");
+  92       setProgress(10);
+  93       if (isMockMode()) {
+  94         setPhase("uploading");
+  95         setProgress(30);
+  96         await new Promise(r => setTimeout(r, 500));
+  97 
+  98         // גם אם האפקט כבר החליף ל-analyzing, זה לא יזיק:
+  99         setPhase("analyzing");
+ 100         setProgress(75);
+ 101         await new Promise(r => setTimeout(r, 700));
+ 102 
+ 103 
+ 104         const mockData: ParsedInvoiceData = {
+ 105           supplier_name: "ספק לדוגמה בע\"מ",
+ 106           business_number: "123456789",
+ 107           invoice_type: "חשבונית מס",
+ 108           invoice_description: "שירותים למחנה קיץ",
+ 109           amount: 1250.00,
+ 110           project: "מחנה קיץ 2025",
+ 111           bank_details_file: bankFile ? "mock-bank-details-url" : undefined,
+ 112           supplier_email: "supplier@example.com"
+ 113         };
+ 114         setProgress(100); setPhase("done");
+ 115 
+ 116         onComplete(mockData);
+ 117         return;
+ 118       }
+ 119 
+ 120       // Real API call
+ 121       const formData = new FormData();
+ 122       formData.append('invoice', invoiceFile);
+ 123       if (bankFile) {
+ 124         formData.append('bank_details', bankFile);
+ 125       }
+ 126 
+ 127       const response = await documentsApi.post('/documents/upload-invoice', formData, {
+ 128         headers: { 'Content-Type': 'multipart/form-data' },
+ 129        onUploadProgress: (e: import('axios').AxiosProgressEvent) => {
+ 130   if (e.total) {
+ 131     const pct = Math.round((e.loaded / e.total) * 100);
+ 132     setProgress(Math.max(10, Math.min(100, pct)));
+ 133     if (pct >= 100) {
+ 134       setPhase(prev => (prev === "uploading" ? "analyzing" : prev));
+ 135     }
+ 136   }
+ 137 },
+ 138       });
+ 139 
+ 140       setPhase("analyzing");
+ 141       setProgress(95);
+ 142 
+ 143       setProgress(100);
+ 144       setPhase("done");
+ 145       onComplete(normalizeServerInvoice(response.data));
+ 146     } catch (err) {
+ 147       console.error('Upload error:', err);
+ 148       setPhase("error");
+ 149       setError('שגיאה בהעלאת הקבצים. אנא נסה שוב.');
+ 150     } finally {
+ 151       setLoading(false);
+ 152     }
+ 153   };
+ 154   return (
+ 155 
+ 156     <div className="p-8">
+ 157       <div className="max-w-2xl mx-auto">
+ 158         <div className="text-center mb-8">
+ 159           <h3 className="text-xl font-semibold text-gray-900 mb-2">העלאת קבצים</h3>
+ 160           <p className="text-gray-600">העלה את קובץ החשבונית ופרטי הבנק (אופציונלי)</p>
+ 161         </div>
+ 162         <div className="mt-4 mb-6" aria-live="polite">
+ 163           <UploadFlowIndicator phase={phase} progress={progress} />
+ 164         </div>
+ 165         <div className="space-y-6">
+ 166           {/* Invoice Upload */}
+ 167           <div className={`bg-gray-50 rounded-xl p-6 border-2 border-dashed transition-colors ${attemptedNext && !invoiceFile ? 'border-red-500' : 'border-gray-300 hover:border-blue-400'}`}>
+ 168             <div className="text-center">
+ 169               <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+ 170                 <FileText className="w-6 h-6 text-blue-600" />
+ 171               </div>
+ 172               <h4 className="text-lg font-medium text-gray-900 mb-2">חשבונית *</h4>
+ 173               <p className="text-sm text-gray-600 mb-4">PDF, JPG, PNG עד 10MB</p>
+ 174 
+ 175               <input
+ 176                 type="file"
+ 177                 accept=".pdf,.jpg,.jpeg,.png"
+ 178                 onChange={handleInvoiceUpload}
+ 179                 className="hidden"
+ 180                 id="invoice-upload"
+ 181               />
+ 182               <label
+ 183                 htmlFor="invoice-upload"
+ 184                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium cursor-pointer transition-all"
+ 185               >
+ 186                 <Upload className="w-4 h-4" />
+ 187                 בחר קובץ
+ 188               </label>
+ 189 
+ 190               {invoiceFile && (
+ 191                 <div className="mt-4 flex items-center justify-center gap-2 text-green-600">
+ 192                   <CheckCircle className="w-4 h-4" />
+ 193                   <span className="text-sm font-medium">{invoiceFile.name}</span>
+ 194                 </div>
+ 195               )}
+ 196             </div>
+ 197           </div>
+ 198 
+ 199           {/* Bank Details Upload */}
+ 200           <div className="bg-gray-50 rounded-xl p-6 border-2 border-dashed border-gray-300 hover:border-green-400 transition-colors">
+ 201             <div className="text-center">
+ 202               <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center mx-auto mb-4">
+ 203                 <FileText className="w-6 h-6 text-green-600" />
+ 204               </div>
+ 205               <h4 className="text-lg font-medium text-gray-900 mb-2">פרטי בנק (אופציונלי)</h4>
+ 206               <p className="text-sm text-gray-600 mb-4">PDF, JPG, PNG עד 10MB</p>
+ 207 
+ 208               <input
+ 209                 type="file"
+ 210                 accept=".pdf,.jpg,.jpeg,.png"
+ 211                 onChange={handleBankUpload}
+ 212                 className="hidden"
+ 213                 id="bank-upload"
+ 214               />
+ 215               <label
+ 216                 htmlFor="bank-upload"
+ 217                 className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-6 py-3 rounded-lg font-medium cursor-pointer transition-all"
+ 218               >
+ 219                 <Upload className="w-4 h-4" />
+ 220                 בחר קובץ
+ 221               </label>
+ 222 
+ 223               {bankFile && (
+ 224                 <div className="mt-4 flex items-center justify-center gap-2 text-green-600">
+ 225                   <CheckCircle className="w-4 h-4" />
+ 226                   <span className="text-sm font-medium">{bankFile.name}</span>
+ 227                 </div>
+ 228               )}
+ 229             </div>
+ 230           </div>
+ 231         </div>
+ 232 
+ 233         {/* Error Display */}
+ 234         {error && (
+ 235           <div className="mt-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
+ 236             <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+ 237             <p className="text-red-700">{error}</p>
+ 238           </div>
+ 239         )}
+ 240 
+ 241         {/* Action Button */}
+ 242         <div className="mt-8 flex justify-center">
+ 243           <button
+ 244             onClick={handleSubmit}
+ 245             disabled={!invoiceFile || loading}
+ 246             className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-medium transition-all min-w-[200px] justify-center"
+ 247           >
+ 248             {loading ? (
+ 249               <>
+ 250                 <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+ 251                 מעלה קבצים...
+ 252               </>
+ 253             ) : (
+ 254               <>
+ 255                 <Upload className="w-4 h-4" />
+ 256                 העלה ועבור לשלב הבא
+ 257               </>
+ 258             )}
+ 259           </button>
+ 260         </div>
+ 261       </div>
+ 262     </div>
+ 263   );
+ 264 }

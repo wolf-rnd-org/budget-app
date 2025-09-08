@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Save, X } from 'lucide-react';
-import { budgetApi, isMockMode } from '@/api/http';
+import { budgetApi, expensesApi, isMockMode } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
 import type { ParsedInvoiceData } from './AddExpenseWizard';
 import { CategoriesField } from './CategoriesField';
@@ -46,7 +46,6 @@ export default function AdditionalDetailsStep({ parsedData, onBack, onSuccess, o
     try {
       setLoading(true);
       setError(null);
-
       const expenseData = {
         // From AI (steps 1-2)
         supplier_name: parsedData.supplier_name,
@@ -78,8 +77,7 @@ export default function AdditionalDetailsStep({ parsedData, onBack, onSuccess, o
         onSuccess(mockExpense);
         return;
       }
-
-      const response = await budgetApi.post('/expenses', expenseData);
+      const response = await expensesApi.post('/', expenseData);
       onSuccess(response.data);
     } catch (err) {
       setError('שמירה נכשלה. נסו שוב.');
