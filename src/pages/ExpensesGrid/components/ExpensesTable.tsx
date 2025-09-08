@@ -4,7 +4,7 @@ import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { getExpenses } from '@/api/expenses';
-import { budgetApi, isMockMode } from '@/api/http';
+import { budgetApi, expensesApi, isMockMode } from '@/api/http';
 
 interface ExpensesTableProps {
   onEdit: (expense: Expense, event: React.MouseEvent) => void;
@@ -66,7 +66,7 @@ export function ExpensesTable({
       } else {
         // Real API call
         debugger
-        const response = await budgetApi.patch(`/budget/expenses/${expense.id}`, {
+        const response = await expensesApi.patch(`/${expense.id}`, {
           priority: newPriority
         });
         
@@ -296,7 +296,7 @@ export function ExpensesTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <div className="relative group">
-                        <button
+                        {/* <button
                           onClick={(e) => handleMarkUrgent(expense, e)}
                           className={`p-2 rounded-lg transition-all ${
                             expense.priority === 'urgent'
@@ -307,15 +307,15 @@ export function ExpensesTable({
                         >
                           <AlertTriangle className="w-4 h-4" />
                         </button>
-                        
+                         */}
                         {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                        {/* <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                           {expense.priority === 'urgent' 
                             ? 'הסר דחיפות' 
                             : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
                           }
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div>
+                        </div> */}
                       </div>
                       
                       <button
