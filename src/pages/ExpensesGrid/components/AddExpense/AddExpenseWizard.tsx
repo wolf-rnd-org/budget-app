@@ -1,9 +1,9 @@
 import React from 'react';
 import { X } from 'lucide-react';
 import { InvoiceUploadStep } from './InvoiceUploadStep';
-import AIExtractedStep from './AIExtractedStep';
 import AdditionalDetailsStep from './AdditionalDetailsStep';
 import { WizardHeader } from './WizardHeader';
+import AIExtractedStep from './AIExtractedStep';
 
 interface AddExpenseWizardProps {
   isOpen: boolean;
