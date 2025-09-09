@@ -4,20 +4,20 @@
     "email": "global.assistant1@example.com",
     "firstName": "יעל",
     "lastName": "דוד",
-    "role": "assistant"
+    "role_label": "assistant"
   },
   {
     "id": "asst_global_002", 
     "email": "global.assistant2@example.com",
     "firstName": "שירה",
     "lastName": "מזרחי",
-    "role": "assistant"
+    "role_label": "assistant"
   },
   {
     "id": "asst_global_003",
     "email": "global.assistant3@example.com",
     "firstName": "רבקה",
     "lastName": "אשכנזי",
-    "role": "assistant"
+    "role_label": "assistant"
   }
 ]

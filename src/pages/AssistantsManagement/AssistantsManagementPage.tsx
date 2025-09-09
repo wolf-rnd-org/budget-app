@@ -11,7 +11,7 @@ interface Assistant {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  role_label: string;
   programIds: string[];
   password?: string;
 }
@@ -21,7 +21,7 @@ interface ExistingAssistant {
   email: string;
   firstName: string;
   lastName: string;
-  role: string;
+  role_label: string;
 }
 
 export function AssistantsManagementPage() {
@@ -78,7 +78,7 @@ export function AssistantsManagementPage() {
             email: 'assistant1@example.com',
             firstName: 'עדי',
             lastName: 'כהן',
-            role: 'assistant',
+            role_label: 'assistant',
             programIds: ['24640', '7112'],
             password: 'H9#67432',
           },
@@ -87,7 +87,7 @@ export function AssistantsManagementPage() {
             email: 'assistant2@example.com',
             firstName: 'נועה',
             lastName: 'לוי',
-            role: 'assistant',
+            role_label: 'assistant',
             programIds: ['24864'],
             password: 'K3$89456',
           },
@@ -99,21 +99,21 @@ export function AssistantsManagementPage() {
             email: 'global.assistant1@example.com',
             firstName: 'יעל',
             lastName: 'דוד',
-            role: 'assistant',
+            role_label: 'assistant',
           },
           {
             id: 'asst_global_002', 
             email: 'global.assistant2@example.com',
             firstName: 'שירה',
             lastName: 'מזרחי',
-            role: 'assistant',
+            role_label: 'assistant',
           },
           {
             id: 'asst_global_003',
             email: 'global.assistant3@example.com',
             firstName: 'רבקה',
             lastName: 'אשכנזי',
-            role: 'assistant',
+            role_label: 'assistant',
           },
         ];
         
@@ -197,7 +197,7 @@ export function AssistantsManagementPage() {
         firstName: formData.firstName.trim(),
         lastName: formData.lastName.trim(),
         email: formData.email.trim(),
-        role: assistantRole?.englishLabel || 'assistant',
+        role_label: assistantRole?.englishLabel || 'assistant',
         programIds: formData.selectedProjects,
         createdBy: user?.userId,
       };
@@ -217,7 +217,7 @@ export function AssistantsManagementPage() {
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          role: 'assistant',
+          role_label: 'assistant',
           programIds: formData.selectedProjects,
           password: mockResponse.password,
         };
@@ -234,14 +234,13 @@ export function AssistantsManagementPage() {
           selectedProjects: [],
         });
       } else {
-        const response = await authApi.post('/admin/register', userData);
-        
+        const response = await authApi.post('/register', userData);
         const createdAssistant: Assistant = {
           id: response.data.userId,
           email: formData.email,
           firstName: formData.firstName,
           lastName: formData.lastName,
-          role: 'assistant',
+          role_label: 'assistant',
           programIds: formData.selectedProjects,
           password: response.data.password,
         };
@@ -802,7 +801,7 @@ export function AssistantsManagementPage() {
                                 </p>
                                 <p className="text-sm text-gray-600 truncate">{assistant.email}</p>
                                 <span className="inline-block text-xs bg-purple-100 text-purple-700 px-2 py-1 rounded-full mt-1">
-                                  {getRoleDisplayName(assistant.role)}
+                                  {getRoleDisplayName(assistant.role_label)}
                                 </span>
                               </div>
                             </div>

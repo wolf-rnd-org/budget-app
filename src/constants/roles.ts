@@ -9,10 +9,10 @@ export type RoleId = 'assistant' | 'global_user' | 'accountan' | 'regular_user' 
 
 export const ROLES: Role[] = [
   { id: 'assistant', englishLabel: 'assistant', hebrewLabel: 'assistant' },
-  { id: 'global_user', englishLabel: 'global_user', hebrewLabel: 'global_user' },
-  { id: 'accountan', englishLabel: 'accountan', hebrewLabel: 'accountan' },
-  { id: 'regular_user', englishLabel: 'regular_user', hebrewLabel: 'regular_user' },
-  { id: 'admin', englishLabel: 'admin', hebrewLabel: 'admin' },
+  { id: 'global_user', englishLabel: 'global_user', hebrewLabel: 'משתמש גלובלי' },
+  { id: 'accountan', englishLabel: 'accountan', hebrewLabel: 'הנה"ח' },
+  { id: 'regular_user', englishLabel: 'regular_user', hebrewLabel: 'מפעילה' },
+  { id: 'admin', englishLabel: 'admin', hebrewLabel: 'מנהל' },
 ];
 
 export function getRoleDisplayName(roleId?: string): string {
