@@ -15,6 +15,9 @@ interface ExpensesTableProps {
   priorityFilter: string;
   dateFrom: string;
   dateTo: string;
+  sortBy: string;
+  sortDir: 'asc' | 'desc';
+  onSortChange?: (by: string, dir: 'asc' | 'desc') => void;
   programId: string | null;
 }
 
@@ -27,6 +30,9 @@ export function ExpensesTable({
   priorityFilter,
   dateFrom,
   dateTo,
+  sortBy,
+  sortDir,
+  onSortChange,
   programId
 }: ExpensesTableProps) {
   const { user } = useAuthStore();
@@ -105,6 +111,8 @@ export function ExpensesTable({
           dateFrom: dateFrom || undefined,
           dateTo: dateTo || undefined,
           priority: (priorityFilter as any) || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -118,7 +126,7 @@ export function ExpensesTable({
     }
 
     fetchInitialExpenses();
-  }, [user?.userId, programId, searchText, statusFilter, dateFrom, dateTo, priorityFilter]);
+  }, [user?.userId, programId, searchText, statusFilter, dateFrom, dateTo, priorityFilter, sortBy, sortDir]);
 
   const loadMoreExpenses = React.useCallback(async () => {
     if (loadingMore || !hasMore || !user?.userId || !programId) return;
@@ -136,6 +144,8 @@ export function ExpensesTable({
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
         priority: (priorityFilter as any) || undefined,
+        sort_by: sortBy,
+        sort_dir: sortDir,
       });
       setExpenses(prev => [...prev, ...result.data]);
       setHasMore(result.hasMore);
@@ -145,7 +155,7 @@ export function ExpensesTable({
     } finally {
       setLoadingMore(false);
     }
-  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, programId]);
+  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, programId, sortBy, sortDir, searchText, statusFilter, dateFrom, dateTo, priorityFilter]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -161,6 +171,22 @@ export function ExpensesTable({
 
   // Server-side filtering now; render what server returns
   const filteredExpenses = expenses;
+
+  const handleSortClick = (field: string) => {
+    const nextDir: 'asc' | 'desc' = sortBy === field ? (sortDir === 'asc' ? 'desc' : 'asc') : (field === 'date' ? 'desc' : 'asc');
+    if (onSortChange) onSortChange(field, nextDir);
+  };
+
+  const SortIcon = ({ field }: { field: string }) => {
+    const isActive = sortBy === field;
+    const classes = `w-4 h-4 ${isActive ? 'text-blue-600' : 'text-gray-300'}`;
+    if (!isActive) return <ChevronDown className={classes} />;
+    return sortDir === 'asc' ? (
+      <ChevronUp className={classes} />
+    ) : (
+      <ChevronDown className={classes} />
+    );
+  };
 
   // Early return if no user
   if (!user?.userId) {
@@ -258,6 +284,29 @@ export function ExpensesTable({
               <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">סכום</th>
               <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">סטטוס</th>
               <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">פעולות</th>
+            </tr>
+            <tr className="bg-gray-50 border-b border-gray-200">
+              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+                <button type="button" onClick={() => handleSortClick('supplier_name')} className="inline-flex items-center gap-1 hover:text-blue-600">
+                  <SortIcon field="supplier_name" />
+                </button>
+              </th>
+              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+                <button type="button" onClick={() => handleSortClick('date')} className="inline-flex items-center gap-1 hover:text-blue-600">
+                  <SortIcon field="date" />
+                </button>
+              </th>
+              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+                <button type="button" onClick={() => handleSortClick('amount')} className="inline-flex items-center gap-1 hover:text-blue-600">
+                  <SortIcon field="amount" />
+                </button>
+              </th>
+              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+                <button type="button" onClick={() => handleSortClick('status')} className="inline-flex items-center gap-1 hover:text-blue-600">
+                  <SortIcon field="status" />
+                </button>
+              </th>
+              <th className="px-6 pb-3 pt-0"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -359,7 +408,7 @@ export function ExpensesTable({
                             </div>
                             
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">תקציב</span>
+                              <span className="text-sm font-medium text-gray-600">חשבונית ע''ש</span>
                               <span className="text-sm text-gray-900 font-bold">{expense.budget}</span>
                             </div>
                             

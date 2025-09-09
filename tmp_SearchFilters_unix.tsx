@@ -34,7 +34,7 @@ export function SearchFilters({
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
-            placeholder="Search..."
+            placeholder="חיפוש בהוצאות..."
             value={searchText}
             onChange={(e) => setSearchText(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
@@ -71,6 +71,7 @@ export function SearchFilters({
             value={dateFrom}
             onChange={(e) => setDateFrom(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder="מתאריך"
           />
         </div>
 
@@ -81,9 +82,11 @@ export function SearchFilters({
             value={dateTo}
             onChange={(e) => setDateTo(e.target.value)}
             className="w-full pl-10 pr-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+            placeholder="עד תאריך"
           />
         </div>
       </div>
     </div>
   );
 }
+
