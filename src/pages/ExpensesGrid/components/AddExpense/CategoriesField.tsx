@@ -1,5 +1,7 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
+import { budgetApi } from '@/api/http';
+
 
 interface CategoriesFieldProps {
   program_id: string | '';
@@ -11,23 +13,36 @@ interface CategoriesFieldProps {
 }
 
 // Static categories; replace with API data by program_id when available
-type Category = { id: string; name: string };
-const availableCategories: Category[] = [
-  { id: '11', name: 'קטגוריה 1' },
-  { id: '12', name: 'קטגוריה 2' },
-  { id: '13', name: 'שירותים' },
-  { id: '16', name: 'אחזקה' },
-  { id: '17', name: 'תוכנה' },
-  { id: '19', name: 'פרסום' },
-  
-];
 
-export function CategoriesField({ selectedCategories, onChange, error }: CategoriesFieldProps) {
+
+
+export function CategoriesField({program_id, selectedCategories, onChange, error }: CategoriesFieldProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const controlRef = React.useRef<HTMLButtonElement | null>(null);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const [coords, setCoords] = React.useState<{ top: number; left: number; width: number } | null>(null);
+  const [categories, setCategories] = React.useState<{ recId: string; name: string }[]>([]);
+  const [loading, setLoading] = React.useState(false);
+
+  React.useEffect(() => {
+    let cancelled = false;
+    async function fetchCategories() {
+      if (!program_id) { setCategories([]); return; }
+      setLoading(true);
+      try {
+        const res = await budgetApi.get('/categories', { params: { program_id } });
+        if (!cancelled) setCategories(res.data);
+      } catch (err) {
+        console.error("failed to load categories", err);
+        if (!cancelled) setCategories([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    }
+    fetchCategories();
+    return () => { cancelled = true; };
+  }, [program_id]);
 
   React.useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -69,7 +84,7 @@ export function CategoriesField({ selectedCategories, onChange, error }: Categor
   };
   const close = () => setOpen(false);
 
-  const filtered = availableCategories.filter((cat) => cat.name.toLowerCase().includes(search.toLowerCase()));
+  const filtered = categories.filter((cat) => cat.name.toLowerCase().includes(search.toLowerCase()));
 
   const isSelected = (id: string) => selectedCategories.includes(id);
   const toggleSelect = (id: string) => {
@@ -109,20 +124,18 @@ export function CategoriesField({ selectedCategories, onChange, error }: Categor
               />
             </div>
             <div className="max-h-56 overflow-auto p-1">
-              {filtered.length === 0 && <div className="px-3 py-2 text-sm text-gray-500">לא נמצאו קטגוריות</div>}
               {filtered.map((cat) => (
                 <label
-                  key={cat.id}
-                  className={`flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-gray-50 ${
-                    isSelected(cat.id) ? 'bg-blue-50' : ''
-                  }`}
+                  key={cat.recId}
+                  className={`flex items-center justify-between px-3 py-2 rounded cursor-pointer hover:bg-gray-50 ${isSelected(cat.recId) ? 'bg-blue-50' : ''
+                    }`}
                   onMouseDown={(e) => e.preventDefault()}
                 >
                   <span className="text-sm text-gray-900">{cat.name}</span>
                   <input
                     type="checkbox"
-                    checked={isSelected(cat.id)}
-                    onChange={() => toggleSelect(cat.id)}
+                    checked={isSelected(cat.recId)}
+                    onChange={() => toggleSelect(cat.recId)}
                     className="w-4 h-4 text-blue-600 border-gray-300 rounded"
                   />
                 </label>

@@ -7,12 +7,14 @@ import { CategoriesField } from './CategoriesField';
 
 interface AdditionalDetailsStepProps {
   parsedData: ParsedInvoiceData;
+  initialInvoiceFile?: File;
+  initialBankFile?: File;
   onBack: () => void;
   onSuccess: (expense: any) => void;
   onCancel: () => void;
 }
 
-export default function AdditionalDetailsStep({ parsedData, onBack, onSuccess, onCancel }: AdditionalDetailsStepProps) {
+export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, initialBankFile, onBack, onSuccess, onCancel }: AdditionalDetailsStepProps) {
   const { user } = useAuthStore();
   const programs = useAuthStore(s => s.programs);
   const programsLoading = useAuthStore(s => s.programsLoading);
@@ -77,8 +79,24 @@ export default function AdditionalDetailsStep({ parsedData, onBack, onSuccess, o
         onSuccess(mockExpense);
         return;
       }
-      const response = await expensesApi.post('/', expenseData);
-      onSuccess(response.data);
+      if (initialInvoiceFile || initialBankFile) {
+        const form = new FormData();
+        Object.entries(expenseData).forEach(([k, v]) => {
+          if (Array.isArray(v)) {
+            v.forEach(val => form.append(k, String(val)));
+          } else {
+            form.append(k, String(v));
+          }
+        });
+
+        if (initialInvoiceFile) form.append('invoice_file', initialInvoiceFile);
+        if (initialBankFile) form.append('bank_details_file', initialBankFile);
+
+        const response = await expensesApi.post('/', form, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+        });
+        onSuccess(response.data);
+      }
     } catch (err) {
       setError('שמירה נכשלה. נסו שוב.');
       console.error('Create expense error:', err);
@@ -104,7 +122,7 @@ export default function AdditionalDetailsStep({ parsedData, onBack, onSuccess, o
                     onChange={(e) => setProgramId(e.target.value)}
                     className={`w-full px-4 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white [appearance:auto] ${
                       attemptedSubmit && !programId ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                      }`}
                     required
                     disabled={programsLoading || programs.length === 0}
                   >

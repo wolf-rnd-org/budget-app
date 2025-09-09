@@ -5,7 +5,7 @@ import type { ParsedInvoiceData } from './AddExpenseWizard';
 import UploadFlowIndicator from './UploadFlowIndicator';
 
 interface InvoiceUploadStepProps {
-  onComplete: (data: ParsedInvoiceData) => void;
+  onComplete: (data: ParsedInvoiceData, files?: { invoice?: File; bank?: File }) => void;
 }
 
 function normalizeServerInvoice(data: any): ParsedInvoiceData {
@@ -117,7 +117,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
       if (bankFile) formData.append('bank_details', bankFile);
 
       const response = await documentsApi.post('/documents/upload-invoice', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
+        
         onUploadProgress: (e: import('axios').AxiosProgressEvent) => {
           if (e.total) {
             const pct = Math.round((e.loaded / e.total) * 100);
@@ -131,7 +131,10 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
       setProgress(95);
       setProgress(100);
       setPhase('done');
-      onComplete(normalizeServerInvoice(response.data));
+      onComplete(normalizeServerInvoice(response.data), {
+        invoice: invoiceFile || undefined,
+        bank: bankFile || undefined,
+      });
     } catch (err) {
       console.error('Upload error:', err);
       setPhase('error');
@@ -159,9 +162,9 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
             attemptedNext && !invoiceFile
               ? 'border-red-500 bg-red-50'
               : invoiceFile
-              ? 'border-green-500 bg-green-50'
-              : 'bg-gray-50 border-gray-300 hover:border-blue-400'
-          }`}>
+                ? 'border-green-500 bg-green-50'
+                : 'bg-gray-50 border-gray-300 hover:border-blue-400'
+            }`}>
             <div className="flex items-center gap-3">
               <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${invoiceFile ? 'bg-green-100' : 'bg-blue-100'}`}>
                 <FileText className={`w-5 h-5 ${invoiceFile ? 'text-green-600' : 'text-blue-600'}`} />
