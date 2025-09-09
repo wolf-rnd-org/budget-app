@@ -12,6 +12,7 @@ interface AddExpenseWizardProps {
 }
 
 export interface ParsedInvoiceData {
+  invoice_file?: string;
   supplier_name: string;
   business_number: string;
   invoice_type: string;
@@ -29,6 +30,7 @@ export interface ParsedInvoiceData {
 export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizardProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
   const [parsedData, setParsedData] = React.useState<ParsedInvoiceData | null>(null);
+  const [files, setFiles] = React.useState<{ invoice?: File; bank?: File }>({});
 
   // Lock background scroll while the wizard is open
   React.useEffect(() => {
@@ -47,8 +49,9 @@ export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizar
     };
   }, [isOpen]);
 
-  const handleStepComplete = (data: ParsedInvoiceData) => {
+  const handleStepComplete = (data: ParsedInvoiceData, filesFromStep?: { invoice?: File; bank?: File }) => {
     setParsedData(data);
+    setFiles(filesFromStep || {});   
     setCurrentStep(2);
   };
 
@@ -109,6 +112,8 @@ export function AddExpenseWizard({ isOpen, onClose, onSuccess }: AddExpenseWizar
           {currentStep === 3 && parsedData && (
             <AdditionalDetailsStep
               parsedData={parsedData}
+              initialInvoiceFile={files.invoice}
+              initialBankFile={files.bank}
               onBack={handleBackToAI}
               onSuccess={handleSuccess}
               onCancel={handleClose}

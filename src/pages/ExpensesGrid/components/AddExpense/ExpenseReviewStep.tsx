@@ -9,12 +9,14 @@ import { AIAnalysisBanner } from './AIAnalysisBanner';
 
 interface ExpenseReviewStepProps {
   parsedData: ParsedInvoiceData;
+  initialInvoiceFile?: File;
+  initialBankFile?: File;
   onBack: () => void;
   onSuccess: (expense: any) => void;
   onCancel: () => void;
 }
 
-export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: ExpenseReviewStepProps) {
+export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankFile, onBack, onSuccess, onCancel }: ExpenseReviewStepProps) {
   const { user } = useAuthStore();
   const [formData, setFormData] = React.useState({
     supplier_name: parsedData.supplier_name,
@@ -31,9 +33,12 @@ export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: E
     bank_account: parsedData.bank_account ?? "",
     beneficiary: parsedData.beneficiary ?? "",
   });
-  const [bankFile, setBankFile] = React.useState<File | null>(null);
+
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [bankFile, setBankFile] = React.useState<File | null>(initialBankFile ?? null);
+  const [invoiceFile, setInvoiceFile] = React.useState<File | null>(initialInvoiceFile ?? null);
+
 
   const programs = useAuthStore(s => s.programs);
   const programsLoading = useAuthStore(s => s.programsLoading);
@@ -89,12 +94,56 @@ export function ExpenseReviewStep({ parsedData, onBack, onSuccess, onCancel }: E
       setLoading(true);
       setError(null);
 
+      const basePayload = {
+        ...formData,
+        user_id: user.userId,
+        date: new Date().toISOString().split('T')[0],
+        status: 'new',
+      };
+      React.useEffect(() => {
+        console.log("initialInvoiceFile:", initialInvoiceFile);
+        console.log("initialBankFile:", initialBankFile);
+      }, [initialInvoiceFile, initialBankFile]);
+      React.useEffect(() => {
+        console.log("state files →", { invoiceFile, bankFile });
+      }, [invoiceFile, bankFile]);
+      // --- אם יש קובץ -> שולחים multipart כדי שיעלה ל-Airtable ---
+      if (invoiceFile || bankFile) {
+        const form = new FormData();
+
+        // שדות טקסט
+        const payload = { ...basePayload, status: 'new' }; // ← סטטוס חוקי
+        Object.entries(payload).forEach(([k, v]) => {
+          if (v == null) return;
+          if (k === 'categories' && Array.isArray(v)) {
+            v.forEach((val) => form.append('categories[]', String(val))); // ← שינוי יחיד כאן
+          } else {
+            form.append(k, String(v));
+          }
+        });
+
+        // קבצים — שמות מדויקים כמו בשרת
+        if (bankFile) form.append('bank_details_file', bankFile);
+        if (invoiceFile) form.append('invoice_file', invoiceFile);
+
+        // דיבוג רגע לפני השליחה (מומלץ להפעיל פעם אחת)
+        for (const [k, v] of form.entries()) {
+          console.log('FD:', k, v instanceof File ? v.name : v);
+        }
+
+        const response = await budgetApi.post('/expenses', form, {
+          // אל תגדירי Content-Type ידנית (הדפדפן מוסיף boundary)
+          withCredentials: false,
+        });
+        onSuccess(response.data);
+        return;
+      }
       const expenseData = {
         ...formData,
         user_id: user.userId,
         date: new Date().toISOString().split('T')[0],
-        status: 'pending',
-        bank_details_file: parsedData.bank_details_file || (bankFile ? 'uploaded-bank-file' : ''),
+        status: 'new',
+        
       };
 
       if (isMockMode()) {
