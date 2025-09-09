@@ -10,7 +10,7 @@ interface User {
   email: string;
   first_name?: string;
   last_name?: string;
-  role?: string;
+  role_label?: string;
   password?: string; // For displaying generated password
 }
 
@@ -84,11 +84,11 @@ export function ProgramAssignmentSection() {
         ];
 
         const mockUsers: User[] = [
-          { id: '1', email: 'user1@example.com', first_name: 'שרה', last_name: 'כהן', role: 'regular_user', password: 'A3$45678' },
-          { id: '2', email: 'user2@example.com', first_name: 'רחל', last_name: 'לוי', role: 'accountan', password: 'B9#12345' },
-          { id: '3', email: 'user3@example.com', first_name: 'מרים', last_name: 'ישראל', role: 'admin', password: 'C7@98765' },
-          { id: '4', email: 'user4@example.com', first_name: 'דינה', last_name: 'אברהם', role: 'regular_user', password: 'D2!56789' },
-          { id: '5', email: 'user5@example.com', first_name: 'תמר', last_name: 'יוסף', role: 'accountan', password: 'E8%34567' },
+          { id: '1', email: 'user1@example.com', first_name: 'שרה', last_name: 'כהן', role_label: 'regular_user', password: 'A3$45678' },
+          { id: '2', email: 'user2@example.com', first_name: 'רחל', last_name: 'לוי', role_label: 'accountan', password: 'B9#12345' },
+          { id: '3', email: 'user3@example.com', first_name: 'מרים', last_name: 'ישראל', role_label: 'admin', password: 'C7@98765' },
+          { id: '4', email: 'user4@example.com', first_name: 'דינה', last_name: 'אברהם', role_label: 'regular_user', password: 'D2!56789' },
+          { id: '5', email: 'user5@example.com', first_name: 'תמר', last_name: 'יוסף', role_label: 'accountan', password: 'E8%34567' },
         ];
 
         setPrograms(mockPrograms);
@@ -416,7 +416,7 @@ export function ProgramAssignmentSection() {
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
     return fullName.includes(searchTerm) || 
            user.email.toLowerCase().includes(searchTerm) ||
-           getRoleDisplayName(user.role).toLowerCase().includes(searchTerm);
+           getRoleDisplayName(user.role_label).toLowerCase().includes(searchTerm);
   });
 
   if (loading) {
@@ -518,7 +518,7 @@ export function ProgramAssignmentSection() {
                               
                               <p className="text-sm text-gray-600 truncate">{user.email}</p>
                               <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full mt-1">
-                                {getRoleDisplayName(user.role)}
+                                {getRoleDisplayName(user.role_label)}
                               </span>
                             </div>
                           </div>

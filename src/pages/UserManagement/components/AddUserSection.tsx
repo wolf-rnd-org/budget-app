@@ -148,9 +148,10 @@ export function AddUserSection() {
         first_name: firstName.trim(),
         last_name: lastName.trim(),
         email: email.trim(),
-        role: selectedRole,
+        role_label: selectedRole,
         password,
         application_name: 'BUDGETS',
+        
         // program_ids: selectedPrograms,
       };
 
@@ -170,6 +171,7 @@ export function AddUserSection() {
         setShowPassword(true);
         setSuccess('משתמש נוצר בהצלחה! הסיסמה נוצרה על ידי המערכת.');
       } else {
+        debugger
         const response = await authApi.post('/register', userData);
         // Assign the new user to all selected programs
         const createdUserId = response.data.user_id;

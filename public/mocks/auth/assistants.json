@@ -4,7 +4,7 @@
     "email": "assistant1@example.com",
     "firstName": "עדי",
     "lastName": "כהן",
-    "role": "assistant",
+    "role_label": "assistant",
     "programIds": ["24640", "7112"],
     "createdBy": "2",
     "password": "H9#67432"
@@ -14,7 +14,7 @@
     "email": "assistant2@example.com",
     "firstName": "נועה",
     "lastName": "לוי",
-    "role": "assistant",
+    "role_label": "assistant",
     "programIds": ["24864"],
     "createdBy": "2",
     "password": "K3$89456"
