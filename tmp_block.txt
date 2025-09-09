@@ -1,0 +1,9 @@
+        <select
+          value={sortDir}
+          onChange={(e) => setSortDir(e.target.value as 'asc' | 'desc')}
+          className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all bg-white"
+        >
+          <option value="desc">Newest → Oldest</option>
+          <option value="asc">Oldest → Newest</option>
+        </select>
+      </div>

@@ -9,12 +9,14 @@ interface AdditionalDetailsStepProps {
   parsedData: ParsedInvoiceData;
   initialInvoiceFile?: File;
   initialBankFile?: File;
+  totalBudget: number;
+  totalExpenses: number;
   onBack: () => void;
   onSuccess: (expense: any) => void;
   onCancel: () => void;
 }
 
-export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, initialBankFile, onBack, onSuccess, onCancel }: AdditionalDetailsStepProps) {
+export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, initialBankFile, totalBudget, totalExpenses, onBack, onSuccess, onCancel }: AdditionalDetailsStepProps) {
   const { user } = useAuthStore();
   const programs = useAuthStore(s => s.programs);
   const programsLoading = useAuthStore(s => s.programsLoading);
@@ -25,6 +27,11 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
+  const overLimitWithNew = React.useMemo(() => {
+    if (!totalBudget || totalBudget <= 0) return false;
+    const amount = Number(parsedData.amount) || 0;
+    return totalExpenses + amount > totalBudget * 1.05;
+  }, [totalBudget, totalExpenses, parsedData.amount]);
 
   React.useEffect(() => {
     if (programId) return;
@@ -48,6 +55,11 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
     try {
       setLoading(true);
       setError(null);
+      if (overLimitWithNew) {
+        setError('חריגה של יותר מ‑5% מהתקציב. לא ניתן ליצור הוצאה. להוספת תקציב חריגה יש לקבל אישור מיוחד ממרים קופשיץ');
+        setLoading(false);
+        return;
+      }
       const expenseData = {
         // From AI (steps 1-2)
         supplier_name: parsedData.supplier_name,
@@ -148,9 +160,11 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
             </div>
           </div>
 
-          {error && (
-            <div className="m-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center gap-3">
-              <span className="text-red-700">{error}</span>
+          {(error || overLimitWithNew) && (
+            <div className="m-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-center justify-between gap-3">
+              <span className="text-red-800 font-semibold">
+                {error || 'חריגה של יותר מ‑5% מהתקציב. לא ניתן ליצור הוצאה.'}
+              </span>
             </div>
           )}
 
@@ -175,7 +189,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
 
               <button
                 onClick={handleSubmit}
-                disabled={loading}
+                disabled={loading || overLimitWithNew}
                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-8 py-3 rounded-xl font-medium transition-all min-w-[160px] justify-center"
               >
                 {loading ? (

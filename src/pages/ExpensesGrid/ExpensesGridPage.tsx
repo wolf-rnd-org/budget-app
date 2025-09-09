@@ -31,6 +31,8 @@ export function ExpensesGridPage() {
   const [priorityFilter, setPriorityFilter] = React.useState('');
   const [dateFrom, setDateFrom] = React.useState('');
   const [dateTo, setDateTo] = React.useState('');
+  const [sortBy, setSortBy] = React.useState<string>('date');
+  const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const [showAddExpense, setShowAddExpense] = React.useState(false);
   const [showEditExpense, setShowEditExpense] = React.useState(false);
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
@@ -38,6 +40,7 @@ export function ExpensesGridPage() {
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewBudgets = userActions.includes('program_budgets.view');
+  const canViewAllExpenses = userActions.includes('expenses.view');
 
   // Fetch budget summary on component mount
   React.useEffect(() => {
@@ -67,7 +70,7 @@ export function ExpensesGridPage() {
       try {
         setLoading(true);
         const result = await getExpenses({ 
-          userId: user.userId, 
+          user_id: canViewAllExpenses ? undefined : user.userId, 
           page: 1, 
           pageSize ,
           programId: currentProgramId
@@ -93,7 +96,7 @@ export function ExpensesGridPage() {
       setLoadingMore(true);
       const nextPage = currentPage + 1;
       const result = await getExpenses({ 
-        userId: user.userId, 
+        user_id: canViewAllExpenses ? undefined : user.userId, 
         page: nextPage, 
         pageSize ,
         programId: currentProgramId
@@ -106,7 +109,7 @@ export function ExpensesGridPage() {
     } finally {
       setLoadingMore(false);
     }
-  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, currentProgramId]);
+  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, currentProgramId, canViewAllExpenses]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -143,6 +146,11 @@ export function ExpensesGridPage() {
   };
 
   const handleNewExpense = () => {
+    const overLimit = totalBudget > 0 && totalExpenses > totalBudget * 1.05;
+    if (overLimit) {
+      // Block opening the wizard when more than 5% over budget
+      return;
+    }
     setShowAddExpense(true);
   };
 const handleExpenseCreated = async (newExpense: Expense) => {
@@ -285,6 +293,9 @@ const handleExpenseCreated = async (newExpense: Expense) => {
           priorityFilter={priorityFilter}
           dateFrom={dateFrom}
           dateTo={dateTo}
+          sortBy={sortBy}
+          sortDir={sortDir}
+          onSortChange={(by, dir) => { setSortBy(by); setSortDir(dir); }}
           programId={currentProgramId}
         />
 
@@ -294,6 +305,8 @@ const handleExpenseCreated = async (newExpense: Expense) => {
           isOpen={showAddExpense}
           onClose={() => setShowAddExpense(false)}
           onSuccess={handleExpenseCreated}
+          totalBudget={totalBudget}
+          totalExpenses={totalExpenses}
         />
         
         {editingExpenseId && (
