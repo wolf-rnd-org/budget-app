@@ -85,10 +85,10 @@ export function ProgramAssignmentSection() {
 
         const mockUsers: User[] = [
           { id: '1', email: 'user1@example.com', first_name: 'שרה', last_name: 'כהן', role_label: 'regular_user', password: 'A3$45678' },
-          { id: '2', email: 'user2@example.com', first_name: 'רחל', last_name: 'לוי', role_label: 'accountan', password: 'B9#12345' },
+          { id: '2', email: 'user2@example.com', first_name: 'רחל', last_name: 'לוי', role_label: 'accountant', password: 'B9#12345' },
           { id: '3', email: 'user3@example.com', first_name: 'מרים', last_name: 'ישראל', role_label: 'admin', password: 'C7@98765' },
           { id: '4', email: 'user4@example.com', first_name: 'דינה', last_name: 'אברהם', role_label: 'regular_user', password: 'D2!56789' },
-          { id: '5', email: 'user5@example.com', first_name: 'תמר', last_name: 'יוסף', role_label: 'accountan', password: 'E8%34567' },
+          { id: '5', email: 'user5@example.com', first_name: 'תמר', last_name: 'יוסף', role_label: 'accountant', password: 'E8%34567' },
         ];
 
         setPrograms(mockPrograms);

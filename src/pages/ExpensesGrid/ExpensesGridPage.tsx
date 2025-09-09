@@ -24,6 +24,7 @@ export function ExpensesGridPage() {
   const [totalExpenses, setTotalExpenses] = React.useState(0);
   const [remainingBalance, setRemainingBalance] = React.useState(0);
   const [budgetUsedPercentage, setBudgetUsedPercentage] = React.useState(0);
+  const [budgetLoading, setBudgetLoading] = React.useState(true);
   
   // Filter states
   const [searchText, setSearchText] = React.useState('');
@@ -45,8 +46,9 @@ export function ExpensesGridPage() {
   // Fetch budget summary on component mount
   React.useEffect(() => {
     async function fetchBudgetSummary() {
-      if (!currentProgramId || !canViewBudgets) return;
+      if (!currentProgramId || !canViewBudgets) { setBudgetLoading(false); return; }
       try {
+        setBudgetLoading(true);
         const summary = await getProgramSummary(currentProgramId);
         setTotalBudget(summary.total_budget);
         setTotalExpenses(summary.total_expenses);
@@ -54,6 +56,8 @@ export function ExpensesGridPage() {
         setBudgetUsedPercentage((summary.total_expenses / summary.total_budget) * 100);
       } catch (err) {
         console.error('Error fetching budget summary:', err);
+      } finally {
+        setBudgetLoading(false);
       }
     }
 
@@ -262,12 +266,13 @@ const handleExpenseCreated = async (newExpense: Expense) => {
           </div>
         </div>
 
-        {canViewBudgets && (
+        {canViewBudgets && !budgetLoading && (
           <BudgetSummaryCards
             totalBudget={totalBudget}
             totalExpenses={totalExpenses}
             remainingBalance={remainingBalance}
             budgetUsedPercentage={budgetUsedPercentage}
+            budgetLoaded={!budgetLoading}
           />
         )}
 

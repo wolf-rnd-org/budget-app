@@ -19,6 +19,10 @@ export type Expense = {
   business_number: string;
   invoice_type: string;
   bank_details_file: string;
+  bank_name?: string;
+  bank_branch?: string;
+  bank_account?: string;
+  beneficiary?: string;
   supplier_email: string;
   status: string;
   user_id: number | string;
