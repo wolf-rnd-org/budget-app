@@ -234,8 +234,7 @@ export function AssistantsManagementPage() {
           selectedProjects: [],
         });
       } else {
-        const response = await authApi.post('/admin/register', userData);
-        
+        const response = await authApi.post('/register', userData);
         const createdAssistant: Assistant = {
           id: response.data.userId,
           email: formData.email,

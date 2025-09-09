@@ -104,10 +104,10 @@ export interface RegisterPayload {
   application_name?: string; // defaulted to APPLICATION_NAME if not provided
 }
 
-export async function register(payload: RegisterPayload): Promise<{ ok: true }> {
+export async function register(payload: RegisterPayload): Promise<{ user_id: 2 }> {
   if (isMockMode()) {
     const response = await authApi.post('/register.json', payload, { withCredentials: true });
-    return response.data as { ok: true };
+    return response.data as { user_id: 2 };
   }
   const url = `${AUTH_BASE_URL}/register`;
   const body = {
@@ -115,7 +115,8 @@ export async function register(payload: RegisterPayload): Promise<{ ok: true }> 
     ...payload,
   };
   const response = await authApi.post(url, body, { withCredentials: true });
-  return response.data as { ok: true };
+ 
+  return response.data as { user_id: 2 };
 }
 
 // Change password (mock vs real)

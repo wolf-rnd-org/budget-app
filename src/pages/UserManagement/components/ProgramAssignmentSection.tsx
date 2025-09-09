@@ -6,9 +6,10 @@ import { getRoleDisplayName } from '@/constants/roles';
 
 interface User {
   id: string;
+  user_id?: string | number;
   email: string;
-  firstName?: string;
-  lastName?: string;
+  first_name?: string;
+  last_name?: string;
   role?: string;
   password?: string; // For displaying generated password
 }
@@ -16,6 +17,7 @@ interface User {
 interface Program {
   id: string;
   name: string;
+  user_ids?: (string | number)[];
 }
 
 interface UserProgramAssignment {
@@ -29,6 +31,12 @@ export function ProgramAssignmentSection() {
   const [users, setUsers] = React.useState<User[]>([]);
   const [assignments, setAssignments] = React.useState<UserProgramAssignment[]>([]);
   const [loading, setLoading] = React.useState(true);
+  // Pagination state for users
+  const PAGE_SIZE = 10;
+  const [page, setPage] = React.useState(1);
+  const [hasMoreUsers, setHasMoreUsers] = React.useState(true);
+  const [loadingMoreUsers, setLoadingMoreUsers] = React.useState(false);
+  const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
   const [savingUsers, setSavingUsers] = React.useState<Set<string>>(new Set());
   const [deletingUsers, setDeletingUsers] = React.useState<Set<string>>(new Set());
   const [error, setError] = React.useState<string | null>(null);
@@ -76,11 +84,11 @@ export function ProgramAssignmentSection() {
         ];
 
         const mockUsers: User[] = [
-          { id: '1', email: 'user1@example.com', firstName: 'שרה', lastName: 'כהן', role: 'regular_user', password: 'A3$45678' },
-          { id: '2', email: 'user2@example.com', firstName: 'רחל', lastName: 'לוי', role: 'accountan', password: 'B9#12345' },
-          { id: '3', email: 'user3@example.com', firstName: 'מרים', lastName: 'ישראל', role: 'admin', password: 'C7@98765' },
-          { id: '4', email: 'user4@example.com', firstName: 'דינה', lastName: 'אברהם', role: 'regular_user', password: 'D2!56789' },
-          { id: '5', email: 'user5@example.com', firstName: 'תמר', lastName: 'יוסף', role: 'accountan', password: 'E8%34567' },
+          { id: '1', email: 'user1@example.com', first_name: 'שרה', last_name: 'כהן', role: 'regular_user', password: 'A3$45678' },
+          { id: '2', email: 'user2@example.com', first_name: 'רחל', last_name: 'לוי', role: 'accountan', password: 'B9#12345' },
+          { id: '3', email: 'user3@example.com', first_name: 'מרים', last_name: 'ישראל', role: 'admin', password: 'C7@98765' },
+          { id: '4', email: 'user4@example.com', first_name: 'דינה', last_name: 'אברהם', role: 'regular_user', password: 'D2!56789' },
+          { id: '5', email: 'user5@example.com', first_name: 'תמר', last_name: 'יוסף', role: 'accountan', password: 'E8%34567' },
         ];
 
         setPrograms(mockPrograms);
@@ -93,20 +101,29 @@ export function ProgramAssignmentSection() {
         }));
         setAssignments(initialAssignments);
       } else {
-        // Real API calls
+        // Real API calls with paginated users
         const [programsResponse, usersResponse] = await Promise.all([
           programsApi.get(`/`),
-          authApi.get('/users'),
+          authApi.get('/users', { params: { page: 1, page_size: PAGE_SIZE } }),
         ]);
-
-        setPrograms(programsResponse.data);
-        setUsers(usersResponse.data);
-        
-        // Initialize assignments
-        const initialAssignments = usersResponse.data.map((user: User) => ({
-          userId: user.id,
-          programIds: [],
+        const programsData: Program[] = programsResponse.data || [];
+        // Normalize user objects to ensure `id` exists (server may return `user_id`)
+        const normalizedUsers: User[] = (usersResponse.data || []).map((u: any) => ({
+          ...u,
+          id: String(u.id ?? u.user_id),
         }));
+        setPrograms(programsData);
+        setUsers(normalizedUsers);
+        setPage(1);
+        setHasMoreUsers((normalizedUsers?.length || 0) === PAGE_SIZE);
+        // Initialize assignments from programs' user_ids mapping
+        const initialAssignments = normalizedUsers.map((u: User) => {
+          const uid = String(u.id);
+          const programIds = programsData
+            .filter(p => Array.isArray(p.user_ids) && p.user_ids!.map(String).includes(uid))
+            .map(p => p.id);
+          return { userId: uid, programIds };
+        });
         setAssignments(initialAssignments);
       }
     } catch (err) {
@@ -116,6 +133,69 @@ export function ProgramAssignmentSection() {
       setLoading(false);
     }
   };
+
+  // Load next page of users when the sentinel becomes visible
+  const loadMoreUsers = React.useCallback(async () => {
+    if (loadingMoreUsers || !hasMoreUsers || loading) return;
+    try {
+      setLoadingMoreUsers(true);
+      const nextPage = page + 1;
+      const res = await authApi.get('/users', { params: { page: nextPage, page_size: PAGE_SIZE } });
+      const newUsersRaw: any[] = res.data || [];
+      const newUsers: User[] = newUsersRaw.map((u: any) => ({ ...u, id: String(u.id ?? u.user_id) }));
+      setUsers(prev => [...prev, ...newUsers]);
+      // Append blank assignments for newly loaded users
+      setAssignments(prev => {
+        const map = new Map(prev.map(a => [a.userId, a]));
+        newUsers.forEach(u => {
+          if (!map.has(u.id)) {
+            // Determine initial programIds for this user from current programs' user_ids mapping
+            const uid = String(u.id);
+            const programIds = programs
+              .filter(p => Array.isArray((p as any).user_ids) && (p as any).user_ids.map(String).includes(uid))
+              .map(p => p.id);
+            map.set(u.id, { userId: uid, programIds });
+          }
+        });
+        return Array.from(map.values());
+      });
+      setPage(nextPage);
+      if (newUsers.length < PAGE_SIZE) setHasMoreUsers(false);
+    } catch (e) {
+      console.error('Error loading more users:', e);
+      // Stop further attempts if server errors to avoid loops
+      setHasMoreUsers(false);
+    } finally {
+      setLoadingMoreUsers(false);
+    }
+  }, [loadingMoreUsers, hasMoreUsers, page, loading]);
+
+  // IntersectionObserver to trigger loading more on scroll
+  React.useEffect(() => {
+    const el = loadMoreRef.current;
+    if (!el) return;
+    const obs = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        loadMoreUsers();
+      }
+    }, { root: null, rootMargin: '200px', threshold: 0 });
+    obs.observe(el);
+    return () => obs.disconnect();
+  }, [loadMoreUsers]);
+
+  // Fallback window scroll listener (some layouts don't trigger IO reliably)
+  React.useEffect(() => {
+    const onScroll = () => {
+      if (loadingMoreUsers || !hasMoreUsers) return;
+      const scrollPos = window.innerHeight + window.scrollY;
+      const threshold = document.body.offsetHeight - 300; // start a bit early
+      if (scrollPos >= threshold) {
+        loadMoreUsers();
+      }
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => window.removeEventListener('scroll', onScroll);
+  }, [loadingMoreUsers, hasMoreUsers, loadMoreUsers]);
 
   const handleProgramToggle = async (userId: string, programId: string) => {
     const isAssigned = assignments.find(a => a.userId === userId)?.programIds.includes(programId);
@@ -212,8 +292,8 @@ export function ProgramAssignmentSection() {
 
   const handleDeleteUser = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    const userName = user?.firstName && user?.lastName 
-      ? `${user.firstName} ${user.lastName}` 
+    const userName = user?.first_name && user?.last_name 
+      ? `${user.first_name} ${user.last_name}` 
       : user?.email || userId;
     
     if (!confirm(`האם אתה בטוח שברצונך למחוק את המשתמש ${userName}?`)) {
@@ -333,7 +413,7 @@ export function ProgramAssignmentSection() {
   // Filter users based on search
   const filteredUsers = users.filter(user => {
     const searchTerm = userSearch.toLowerCase();
-    const fullName = `${user.firstName || ''} ${user.lastName || ''}`.toLowerCase();
+    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
     return fullName.includes(searchTerm) || 
            user.email.toLowerCase().includes(searchTerm) ||
            getRoleDisplayName(user.role).toLowerCase().includes(searchTerm);
@@ -426,15 +506,16 @@ export function ProgramAssignmentSection() {
                           <div className="flex items-center gap-3">
                             <div className="w-10 h-10 bg-blue-600 rounded-full flex items-center justify-center flex-shrink-0">
                               <span className="text-white font-medium text-sm">
-                                {user.firstName?.charAt(0) || user.email.charAt(0).toUpperCase()}
+                                {user.first_name?.charAt(0)}
                               </span>
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-gray-900 truncate">
-                                {user.firstName && user.lastName 
-                                  ? `${user.firstName} ${user.lastName}` 
+                                {user.first_name && user.last_name 
+                                  ? `${user.first_name} ${user.last_name}` 
                                   : user.email}
                               </p>
+                              
                               <p className="text-sm text-gray-600 truncate">{user.email}</p>
                               <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full mt-1">
                                 {getRoleDisplayName(user.role)}
@@ -508,7 +589,7 @@ export function ProgramAssignmentSection() {
                         <td className="px-4 py-4">
                           <div className="relative">
                             <button
-                              onClick={() => toggleDropdown(user.id)}
+                              onClick={() => toggleDropdown(user.id)} disabled style={{cursor: 'not-allowed'}}
                               className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all min-w-[140px] justify-between"
                             >
                               <span>הוסף פרויקט</span>
@@ -578,7 +659,7 @@ export function ProgramAssignmentSection() {
                               </div>
                             </div>
                           )}
-                          <button
+                          <button  style={{cursor: 'not-allowed'}}
                             onClick={() => handleDeleteUser(user.id)}
                             disabled={deletingUsers.has(user.id)}
                             className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[100px] justify-center"
@@ -602,6 +683,11 @@ export function ProgramAssignmentSection() {
                 </tbody>
               </table>
             </div>
+            {/* Infinite scroll sentinel + loading indicator */}
+            <div ref={loadMoreRef} className="h-6" />
+            {loadingMoreUsers && (
+              <div className="py-4 text-center text-gray-500 text-sm">טוען עוד נתונים...</div>
+            )}
           </div>
         )}
       </div>

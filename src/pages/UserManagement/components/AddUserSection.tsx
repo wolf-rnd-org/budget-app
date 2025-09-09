@@ -22,6 +22,28 @@ export function AddUserSection() {
   const [success, setSuccess] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
 
+  // Generate a strong password containing upper/lowercase, digits, and symbols
+  const generatePassword = (length: number = 10) => {
+    const upper = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lower = 'abcdefghijklmnopqrstuvwxyz';
+    const digits = '0123456789';
+    const symbols = '!@#$%^&*()?';
+    const all = upper + lower + digits + symbols;
+
+    const pick = (set: string) => set[Math.floor(Math.random() * set.length)];
+    // Ensure at least one of each required type
+    let pwd = [pick(upper), pick(lower), pick(digits), pick(symbols)];
+    for (let i = pwd.length; i < length; i++) {
+      pwd.push(pick(all));
+    }
+    // Shuffle
+    for (let i = pwd.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [pwd[i], pwd[j]] = [pwd[j], pwd[i]];
+    }
+    return pwd.join('');
+  };
+
   // Load programs on component mount
   React.useEffect(() => {
     if (user?.userId) {
@@ -118,12 +140,18 @@ export function AddUserSection() {
       setError(null);
       setSuccess(null);
 
+      // Generate password before sending to server
+      const password = generatePassword(10);
+      setGeneratedPassword(password);
+
       const userData = {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
+        first_name: firstName.trim(),
+        last_name: lastName.trim(),
         email: email.trim(),
         role: selectedRole,
-        programIds: selectedPrograms,
+        password,
+        application_name: 'BUDGETS',
+        // program_ids: selectedPrograms,
       };
 
       if (isMockMode()) {
@@ -134,17 +162,26 @@ export function AddUserSection() {
           success: true,
           message: 'משתמש נוצר בהצלחה',
           userId: `user_${Date.now()}`,
-          password: 'A7#45892', // Server-generated password
+          password, // Use the generated password
         };
         
         setNewUserId(mockResponse.userId);
-        setGeneratedPassword(mockResponse.password);
+        setGeneratedPassword(password);
         setShowPassword(true);
         setSuccess('משתמש נוצר בהצלחה! הסיסמה נוצרה על ידי המערכת.');
       } else {
-        const response = await authApi.post('/admin/register', userData);
-        setNewUserId(response.data.userId);
-        setGeneratedPassword(response.data.password);
+        const response = await authApi.post('/register', userData);
+        // Assign the new user to all selected programs
+        const createdUserId = response.data.user_id;
+        debugger
+        if (createdUserId && selectedPrograms.length > 0) {
+          await programsApi.post(`/${createdUserId}/assign-user`, {
+            program_ids: selectedPrograms,
+          });
+        }
+        setNewUserId(createdUserId);
+        
+        setGeneratedPassword(password);
         setShowPassword(true);
         setSuccess('משתמש נוצר בהצלחה! הסיסמה נוצרה על ידי המערכת.');
       }
