@@ -5,12 +5,12 @@ export interface Role {
 }
 
 // Allowed role IDs in the system
-export type RoleId = 'assistant' | 'global_user' | 'accountan' | 'regular_user' | 'admin';
+export type RoleId = 'assistant' | 'global_user' | 'accountant' | 'regular_user' | 'admin';
 
 export const ROLES: Role[] = [
   { id: 'assistant', englishLabel: 'assistant', hebrewLabel: 'assistant' },
   { id: 'global_user', englishLabel: 'global_user', hebrewLabel: 'משתמש גלובלי' },
-  { id: 'accountan', englishLabel: 'accountan', hebrewLabel: 'הנה"ח' },
+  { id: 'accountant', englishLabel: 'accountant', hebrewLabel: 'הנה"ח' },
   { id: 'regular_user', englishLabel: 'regular_user', hebrewLabel: 'מפעילה' },
   { id: 'admin', englishLabel: 'admin', hebrewLabel: 'מנהל' },
 ];

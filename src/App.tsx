@@ -30,6 +30,7 @@ function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
           <div className="flex items-center gap-8">
+            <img src="/logo.png" alt="BudgetApp" className="h-7 w-7 rounded-lg shadow-sm" />
             <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
               אפליקציה לניהול הוצאות
             </Link>

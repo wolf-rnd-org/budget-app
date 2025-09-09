@@ -71,7 +71,6 @@ export function ExpensesTable({
         }
       } else {
         // Real API call
-        debugger
         const response = await expensesApi.patch(`/${expense.id}`, {
           priority: newPriority
         });
@@ -367,18 +366,19 @@ export function ExpensesTable({
                         </div> */}
                       </div>
                       
-                      <button
+                      
+                      {/* <button
                         onClick={(e) => onEdit(expense, e)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       >
                         <Edit3 className="w-4 h-4" />
-                      </button>
-                      <button
+                      </button> */}
+                      {/* <button
                         onClick={(e) => onDelete(expense, e)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button>
+                      </button> */}
                       <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                         {expandedRow === expense.id ? 
                           <ChevronUp className="w-4 h-4" /> : 
@@ -395,7 +395,7 @@ export function ExpensesTable({
                     <td colSpan={5} className="px-6 py-0">
                       <div className="bg-gray-50 rounded-xl p-6 m-4 border border-gray-200">
                         <div className="mb-4">
-                          <h4 className="text-lg font-semibold text-gray-900 mb-1">פרטי הוצאה מלאים</h4>
+                          <h4 className="text-lg font-semibold text-gray-900 mb-1">פרטי הוצאה נוספים</h4>
                           <div className="w-12 h-0.5 bg-blue-500 rounded-full"></div>
                         </div>
                         
@@ -444,6 +444,29 @@ export function ExpensesTable({
                             </div>
                           </div>
                           
+                          {/* Bank Details Section */}
+                          <div className="pt-4 border-t border-gray-200">
+                            <h5 className="text-sm font-semibold text-gray-700 mb-3">פרטי בנק</h5>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">שם הבנק</span>
+                                <span className="text-sm text-gray-900">{(expense as any).bank_name || expense.bank_name || '—'}</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">סניף</span>
+                                <span className="text-sm text-gray-900">{(expense as any).bank_branch || expense.bank_branch || '—'}</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">חשבון</span>
+                                <span className="text-sm text-gray-900">{(expense as any).bank_account || expense.bank_account || '—'}</span>
+                              </div>
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">מוטב</span>
+                                <span className="text-sm text-gray-900">{(expense as any).beneficiary || expense.beneficiary || '—'}</span>
+                              </div>
+                            </div>
+                          </div>
+
                           {/* Files Section */}
                           <div className="pt-4 border-t border-gray-200">
                             <h5 className="text-sm font-semibold text-gray-700 mb-3">קבצים מצורפים</h5>

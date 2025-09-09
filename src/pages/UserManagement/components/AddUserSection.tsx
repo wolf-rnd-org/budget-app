@@ -171,11 +171,9 @@ export function AddUserSection() {
         setShowPassword(true);
         setSuccess('משתמש נוצר בהצלחה! הסיסמה נוצרה על ידי המערכת.');
       } else {
-        debugger
         const response = await authApi.post('/register', userData);
         // Assign the new user to all selected programs
         const createdUserId = response.data.user_id;
-        debugger
         if (createdUserId && selectedPrograms.length > 0) {
           await programsApi.post(`/${createdUserId}/assign-user`, {
             program_ids: selectedPrograms,
