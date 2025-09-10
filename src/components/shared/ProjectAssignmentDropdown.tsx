@@ -27,6 +27,8 @@ export function ProjectAssignmentDropdown({
 }: ProjectAssignmentDropdownProps) {
   const [isOpen, setIsOpen] = React.useState(false);
   const [searchTerm, setSearchTerm] = React.useState('');
+  const buttonRef = React.useRef<HTMLButtonElement | null>(null);
+  const [menuStyle, setMenuStyle] = React.useState<{ top: number; left: number; width: number } | null>(null);
 
   const selectedProjects = projects.filter(p => selectedProjectIds.includes(p.id));
   const availableProjects = projects.filter(p => 
@@ -45,6 +47,28 @@ export function ProjectAssignmentDropdown({
     onProjectRemove(projectId);
   };
 
+  const updateMenuPosition = React.useCallback(() => {
+    const btn = buttonRef.current;
+    if (!btn) return;
+    const rect = btn.getBoundingClientRect();
+    const top = rect.bottom + window.scrollY + 8; // 8px gap
+    const left = rect.left + window.scrollX - 155;
+    const width = Math.max(rect.width, 300);
+    setMenuStyle({ top, left, width });
+  }, []);
+
+  React.useEffect(() => {
+    if (!isOpen) return;
+    updateMenuPosition();
+    const onScrollOrResize = () => updateMenuPosition();
+    window.addEventListener('scroll', onScrollOrResize, true);
+    window.addEventListener('resize', onScrollOrResize);
+    return () => {
+      window.removeEventListener('scroll', onScrollOrResize, true);
+      window.removeEventListener('resize', onScrollOrResize);
+    };
+  }, [isOpen, updateMenuPosition]);
+
   return (
     <div className={`space-y-3 ${className}`}>
       {/* Selected Projects Display */}
@@ -61,6 +85,7 @@ export function ProjectAssignmentDropdown({
                   {project.name}
                 </span>
                 <button
+                  type="button"
                   onClick={(e) => handleProjectRemove(project.id, e)}
                   className="hover:bg-green-200 rounded-full p-0.5 transition-colors"
                   disabled={disabled}
@@ -76,6 +101,8 @@ export function ProjectAssignmentDropdown({
       {/* Dropdown */}
       <div className="relative">
         <button
+          type="button"
+          ref={buttonRef}
           onClick={() => setIsOpen(!isOpen)}
           disabled={disabled}
           className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[140px] justify-between"
@@ -84,16 +111,19 @@ export function ProjectAssignmentDropdown({
           <ChevronDown className={`w-4 h-4 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
         </button>
 
-        {isOpen && (
+        {isOpen && menuStyle && (
           <>
             {/* Backdrop */}
             <div 
-              className="fixed inset-0 z-10" 
+              className="fixed inset-0 z-[9990]" 
               onClick={() => setIsOpen(false)}
             />
             
             {/* Dropdown Menu */}
-            <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-[15] overflow-hidden min-w-[300px]">
+            <div
+              className="fixed bg-white border border-gray-200 rounded-xl shadow-lg z-[10000] overflow-hidden"
+              style={{ top: menuStyle?.top ?? 0, left: menuStyle?.left ?? 0, width: menuStyle?.width ?? 300 }}
+            >
               {/* Search */}
               <div className="p-3 border-b border-gray-200">
                 <div className="relative">
@@ -118,6 +148,7 @@ export function ProjectAssignmentDropdown({
                   <div className="py-2">
                     {availableProjects.map(project => (
                       <button
+                        type="button"
                         key={project.id}
                         onClick={() => handleProjectSelect(project.id)}
                         className="w-full text-right px-4 py-2 hover:bg-green-50 text-gray-700 hover:text-green-700 transition-colors text-sm"
