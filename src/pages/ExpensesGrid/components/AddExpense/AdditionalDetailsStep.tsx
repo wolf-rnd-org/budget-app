@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Save, X } from 'lucide-react';
-import { budgetApi, expensesApi, isMockMode, getFundingSources } from '@/api/http';
+import { expensesApi, isMockMode } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import type { ParsedInvoiceData } from './AddExpenseWizard';
@@ -57,8 +57,10 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
       try {
         setFundingSourcesLoading(true);
         setFundingSourcesError(null);
-        const { data } = await getFundingSources(programId);
-        const list = Array.isArray(data) ? data : [];
+        const list = [
+          { id: 'recdAu3AJT08rBFFT', name: 'סמינר הרב וולף' },
+          { id: 'reciQ3AZn4mb51LfF', name: 'אוהל אברהם' },
+        ];
         setFundingSources(list);
 
         if (!list.some(fs => fs.id === fundingSourceId)) {
