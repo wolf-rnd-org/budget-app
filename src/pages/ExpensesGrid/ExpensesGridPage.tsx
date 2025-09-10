@@ -4,12 +4,14 @@ import { Outlet, useNavigate } from 'react-router-dom';
 import { getExpenses } from '@/api/expenses';
 import { Expense } from '@/api/types';
 import { useAuthStore } from '@/stores/authStore';
+import { useProgramsStore } from '@/stores/programsStore';
 import { BudgetSummaryCards, ProjectSelector, SearchFilters, ExpensesTable, LoadingStates, AddExpenseWizard, EditExpenseModal } from './components';
 import { getProgramSummary } from '@/api/programs';
 
 export function ExpensesGridPage() {
   const navigate = useNavigate();
-  const { user, currentProgramId } = useAuthStore();
+  const user = useAuthStore(s => s.user);
+  const currentProgramId = useProgramsStore(s => s.selectedProgramId);
   const [expenses, setExpenses] = React.useState<Expense[]>([]);
   const [loading, setLoading] = React.useState(true);
   const [loadingMore, setLoadingMore] = React.useState(false);
@@ -37,11 +39,15 @@ export function ExpensesGridPage() {
   const [showAddExpense, setShowAddExpense] = React.useState(false);
   const [showEditExpense, setShowEditExpense] = React.useState(false);
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
+  const [editingExpenseData, setEditingExpenseData] = React.useState<Expense | null>(null);
 
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewBudgets = userActions.includes('program_budgets.view');
   const canViewAllExpenses = userActions.includes('expenses.view');
+
+  // Derived: over budget by more than 5%
+  const isOverLimit = totalBudget > 0 && totalExpenses > totalBudget * 1.05;
 
   // Fetch budget summary on component mount
   React.useEffect(() => {
@@ -134,11 +140,11 @@ export function ExpensesGridPage() {
   const handleEdit = (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
     setEditingExpenseId(expense.id);
+    setEditingExpenseData(expense);
     setShowEditExpense(true);
   };
 
   const handleDelete = (expense: Expense, event: React.MouseEvent) => {
-    event.stopPropagation();
     console.log('Delete expense:', expense.id);
   };
 
@@ -150,8 +156,7 @@ export function ExpensesGridPage() {
   };
 
   const handleNewExpense = () => {
-    const overLimit = totalBudget > 0 && totalExpenses > totalBudget * 1.05;
-    if (overLimit) {
+    if (isOverLimit) {
       // Block opening the wizard when more than 5% over budget
       return;
     }
@@ -258,6 +263,7 @@ const handleExpenseCreated = async (newExpense: Expense) => {
             <ProjectSelector />
             <button
               onClick={handleNewExpense}
+              style={{ cursor: isOverLimit ? 'not-allowed' : 'pointer' }}
               className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-xl font-medium transition-all duration-200 shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
             >
               <Plus className="w-5 h-5" />
@@ -318,9 +324,11 @@ const handleExpenseCreated = async (newExpense: Expense) => {
           <EditExpenseModal
             isOpen={showEditExpense}
             expenseId={editingExpenseId}
+            initialExpense={editingExpenseData}
             onClose={() => {
               setShowEditExpense(false);
               setEditingExpenseId(null);
+              setEditingExpenseData(null);
             }}
             onSuccess={handleExpenseUpdated}
           />

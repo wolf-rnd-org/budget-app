@@ -16,6 +16,7 @@ export type Expense = {
   budget: number;
   project: string;
   date: string;
+  program_id: string;
   // Server may return list of ids (legacy) or list of {id,name}
   categories: CategoryRef[] | string[] | string;
   amount: number;

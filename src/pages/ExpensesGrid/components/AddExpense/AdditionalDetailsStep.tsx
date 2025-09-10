@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { budgetApi, expensesApi, isMockMode } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
+import { useProgramsStore } from '@/stores/programsStore';
 import type { ParsedInvoiceData } from './AddExpenseWizard';
 import { CategoriesField } from './CategoriesField';
 
@@ -18,9 +19,9 @@ interface AdditionalDetailsStepProps {
 
 export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, initialBankFile, totalBudget, totalExpenses, onBack, onSuccess, onCancel }: AdditionalDetailsStepProps) {
   const { user } = useAuthStore();
-  const programs = useAuthStore(s => s.programs);
-  const programsLoading = useAuthStore(s => s.programsLoading);
-  const currentProgramId = useAuthStore(s => s.currentProgramId);
+  const programs = useProgramsStore(s => s.programs);
+  const programsLoading = useProgramsStore(s => s.loading);
+  const currentProgramId = useProgramsStore(s => s.selectedProgramId);
 
   const [programId, setProgramId] = React.useState<string>("");
   const [categories, setCategories] = React.useState<string[]>([]);
@@ -151,7 +152,6 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">קטגוריות</label>
                 <CategoriesField
-                  program_id={programId}
                   selectedCategories={categories}
                   onChange={setCategories}
                   error={attemptedSubmit && categories.length === 0}
@@ -211,3 +211,5 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
     </div>
   );
 }
+
+

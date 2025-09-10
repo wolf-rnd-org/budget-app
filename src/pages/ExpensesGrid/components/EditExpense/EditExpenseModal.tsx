@@ -1,17 +1,19 @@
 import React from 'react';
 import { X, Save, Upload, CheckCircle, AlertCircle, FileText } from 'lucide-react';
-import { budgetApi, isMockMode } from '@/api/http';
+import { budgetApi, expensesApi, isMockMode } from '@/api/http';
 import { Expense } from '@/api/types';
 import { CategoriesField } from '../AddExpense/CategoriesField';
+// Categories are handled via CategoriesField; no direct store access here
 
 interface EditExpenseModalProps {
   isOpen: boolean;
   expenseId: string;
+  initialExpense?: Expense | null;
   onClose: () => void;
   onSuccess: (updatedExpense: Expense) => void;
 }
 
-export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: EditExpenseModalProps) {
+export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, onSuccess }: EditExpenseModalProps) {
   const [expense, setExpense] = React.useState<Expense | null>(null);
   const [loading, setLoading] = React.useState(false);
   const [saving, setSaving] = React.useState(false);
@@ -20,12 +22,12 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
   const [newInvoiceFile, setNewInvoiceFile] = React.useState<File | null>(null);
   const [newBankFile, setNewBankFile] = React.useState<File | null>(null);
 
-  const [programs, setPrograms] = React.useState<Array<{ id: string; name: string }>>([]);
+  // const [programs, setPrograms] = React.useState<Array<{ id: string; name: string }>>([]);
 
 
   const [formData, setFormData] = React.useState({
     budget: 0,
-    programId: "",
+    program_id: '',
     project: '',
     date: '',
     categories: [] as string[],
@@ -36,9 +38,21 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
     invoice_type: '',
     supplier_email: '',
     status: '',
+    bank_name: '',
+    bank_branch: '',
+    bank_account: '',
+    beneficiary: '',
   });
 
-  // Fetch expense data when modal opens
+  const hasExistingFile = (f: any): boolean => {
+    if (!f) return false;
+    if (typeof f === 'string') return f.trim().length > 0;
+    if (Array.isArray(f)) return f.length > 0;
+    if (typeof f === 'object' && (f as any).url) return true;
+    return false;
+  };
+
+  // Prefill from initialExpense if provided, otherwise fetch from server
   React.useEffect(() => {
     if (!isOpen || !expenseId) return;
 
@@ -47,7 +61,42 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
         setLoading(true);
         setError(null);
 
-        if (isMockMode()) {
+        if (initialExpense) {
+          // Use data we already have (from grid) without hitting the server
+          setExpense(initialExpense);
+          // Normalize categories to string[] for the form state
+          const normalizedCategories: string[] = (() => {
+            const cats = initialExpense.categories as any;
+            if (!cats) return [];
+            if (Array.isArray(cats)) {
+              if (cats.length === 0) return [];
+              if (typeof cats[0] === 'string') return cats as string[];
+              return (cats as Array<any>)
+                .map((c) => c?.id ?? c?.recId ?? c?.recordId ?? c?.value)
+                .filter(Boolean);
+            }
+            if (typeof cats === 'string') return [cats as string];
+            return [];
+          })();
+          setFormData({
+            budget: initialExpense.budget,
+            program_id: initialExpense.program_id,
+            project: initialExpense.project || '',
+            date: initialExpense.date || '',
+            categories: normalizedCategories,
+            amount: initialExpense.amount,
+            invoice_description: initialExpense.invoice_description,
+            supplier_name: initialExpense.supplier_name,
+            business_number: initialExpense.business_number,
+            invoice_type: initialExpense.invoice_type,
+            supplier_email: initialExpense.supplier_email,
+            status: initialExpense.status,
+            bank_name: (initialExpense as any).bank_name || '',
+            bank_branch: (initialExpense as any).bank_branch || '',
+            bank_account: (initialExpense as any).bank_account || '',
+            beneficiary: (initialExpense as any).beneficiary || '',
+          });
+        } else if (isMockMode()) {
           // Mock response - simulate API delay
           await new Promise(resolve => setTimeout(resolve, 500));
 
@@ -71,12 +120,17 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
           };
 
           setExpense(mockExpense);
+          const mockCats: string[] = Array.isArray(mockExpense.categories)
+            ? (typeof (mockExpense as any).categories[0] === 'string'
+              ? (mockExpense.categories as string[])
+              : (mockExpense.categories as any[]).map((c: any) => c?.id ?? c?.recId ?? c?.recordId ?? c?.value).filter(Boolean))
+            : (typeof mockExpense.categories === 'string' ? [mockExpense.categories as string] : []);
           setFormData({
             budget: mockExpense.budget,
             programId: "", // אין כרגע במוק
             project: mockExpense.project,
             date: mockExpense.date,
-            categories: Array.isArray(mockExpense.categories) ? mockExpense.categories : [mockExpense.categories],
+            categories: mockCats,
             amount: mockExpense.amount,
             invoice_description: mockExpense.invoice_description,
             supplier_name: mockExpense.supplier_name,
@@ -86,19 +140,21 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
             status: mockExpense.status,
           });
         } else {
-          const response = await budgetApi.get(`/budget/expenses/${expenseId}`);
+          const response = await expensesApi.get(`/expenses/${expenseId}`);
           const expenseData = response.data;
 
           setExpense(expenseData);
+          const apiCats: string[] = Array.isArray(expenseData.categories)
+            ? (typeof (expenseData as any).categories[0] === 'string'
+              ? (expenseData.categories as string[])
+              : (expenseData.categories as any[]).map((c: any) => c?.id ?? c?.recId ?? c?.recordId ?? c?.value).filter(Boolean))
+            : (typeof expenseData.categories === 'string' ? [expenseData.categories as string] : []);
           setFormData({
             budget: expenseData.budget,
-            programId: expenseData.program?.id
-              || expenseData.program_id_rec
-              || expenseData.program_record_id
-              || "", // אם אין כרגע — יבחרו מה־Select
+            program_id: expenseData.program_id, 
             project: expenseData.project || "",
             date: expenseData.date,
-            categories: Array.isArray(expenseData.categories) ? expenseData.categories : [expenseData.categories],
+            categories: apiCats,
             amount: expenseData.amount,
             invoice_description: expenseData.invoice_description,
             supplier_name: expenseData.supplier_name,
@@ -117,28 +173,19 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
     }
 
     fetchExpense();
-  }, [isOpen, expenseId]);
-
-  // useEffect נוסף, פעם אחת
-  React.useEffect(() => {
-    if (!isOpen) return;
-    (async () => {
-      try {
-        const res = await budgetApi.get("//programs");//לשאול את נעמי על url
-        // תמכי גם ב-res.data.items וגם ב-res.data
-        const raw = Array.isArray(res.data?.items) ? res.data.items : res.data;
-        const list = (raw || []).map((p: any) => ({
-          id: p.id ?? p.recordId ?? p.airtableId,    // מזהה רשומה
-          name: p.name ?? p.title ?? p.program_name, // שם לתצוגה
-        }));
-        setPrograms(list);
-      } catch (e) {
-        console.error("load programs failed", e);
-      }
-    })();
-  }, [isOpen]);
+  }, [isOpen, expenseId, initialExpense]);
 
 
+
+  // Populate programs from store (no server call)
+  // React.useEffect(() => {
+  //   if (!isOpen) return;
+  //   const raw = storePrograms || [];
+  //   const list = raw.map((p: any) => ({ id: p.id, name: p.name }));
+  //   setPrograms(list);
+  // }, [isOpen, storePrograms]);
+
+  
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasUnsavedChanges(true);
@@ -183,10 +230,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
       setError('סכום חייב להיות חיובי');
       return false;
     }
-    if (!formData.project.trim()) {
-      setError('פרויקט הוא שדה חובה');
-      return false;
-    }
+ 
     if (!formData.date) {
       setError('תאריך הוא שדה חובה');
       return false;
@@ -195,22 +239,19 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
       setError('כתובת אימייל לא תקינה');
       return false;
     }
-    if (!formData.programId) {
-      setError('יש לבחור פרויקט');
-      return false;
-    }
+    
     if (formData.categories.length === 0) {
       setError('יש לבחור לפחות קטגוריה אחת');
       return false;
     }
     return true;
-  };
+  }; 
   React.useEffect(() => {
     // אפשר: איפוס מלא, או לסנן מול האופציות ב-CategoriesField
     if (formData.programId) {
       setFormData(prev => ({ ...prev, categories: [] }));
     }
-  }, [formData.programId]);
+  }, [formData.program_id]);
   const handleSave = async () => {
     if (!validateForm()) return;
 
@@ -266,7 +307,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
     setExpense(null);
     setFormData({
       budget: 0,
-      programId: "",
+      program_id: '',
       project: '',
       date: '',
       categories: [],
@@ -314,6 +355,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">פרטי הוצאה</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">שם ספק *</label>
                       <input
@@ -350,6 +392,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                         <option value="קבלה">קבלה</option>
                       </select>
                     </div>
+                    
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">סכום *</label>
@@ -384,22 +427,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                         required
                       />
                     </div>
-                    <div className="md:col-span-2">
-                      <label className="block text-sm font-medium text-gray-700 mb-2">פרויקט *</label>
-                      <select
-                        value={formData.programId}
-                        onChange={(e) => handleInputChange('programId', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                        required
-                      >
-                        <option value="" disabled>בחרי פרויקט…</option>
-                        {programs.map(p => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
-                     
-                    </div>
-
+                  
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">תיאור החשבונית *</label>
@@ -422,24 +450,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                       />
                     </div>
 
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">סטטוס *</label>
-                      <select
-                        value={formData.status}
-                        onChange={(e) => handleInputChange('status', e.target.value)}
-                        className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
-                        required
-                      >
-                        <option value="">בחר סטטוס</option>
-                        <option value="pending">ממתין</option>
-                        <option value="approved">מאושר</option>
-                        <option value="rejected">נדחה</option>
-                        <option value="הועבר לתשלום">הועבר לתשלום</option>
-                        <option value="שולם ממתין לקבלה">שולם ממתין לקבלה</option>
-                        <option value="שולם הסתים טיפול">שולם הסתים טיפול</option>
-                        <option value="חדש - ממתין להנהל''ח">חדש - ממתין להנהל''ח</option>
-                      </select>
-                    </div>
+                    
                   </div>
                 </div>
 
@@ -448,19 +459,18 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">קטגוריות *</h3>
                   
                   <CategoriesField
-                    program_id={formData.programId}              // ⬅️ חדש
                     selectedCategories={formData.categories}
                     onChange={(categories) => handleInputChange('categories', categories)}
                   />
                 </div>
 
                 {/* Files Section */}
-                <div className="bg-gray-50 rounded-xl p-6">
+                {/* <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">קבצים מצורפים</h3>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> */}
                     {/* Invoice File */}
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">חשבונית</label>
                       <div className="space-y-3">
                         {expense?.invoice_file && !newInvoiceFile && (
@@ -507,10 +517,10 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                           </label>
                         </div>
                       </div>
-                    </div>
+                    </div> */}
 
                     {/* Bank Details File */}
-                    <div>
+                    {/* <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">פרטי בנק</label>
                       <div className="space-y-3">
                         {expense?.bank_details_file && !newBankFile && (
@@ -559,7 +569,7 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
                       </div>
                     </div>
                   </div>
-                </div>
+                </div> */}
               </div>
             </div>
           )}
