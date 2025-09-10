@@ -72,7 +72,7 @@ export function AddUserSection() {
         ];
         setPrograms(mockPrograms);
       } else {
-        const response = await programsApi.get(`/${user.userId}`);
+        const response = await programsApi.get(`/`);
         setPrograms(response.data);
       }
     } catch (err) {
@@ -227,7 +227,7 @@ export function AddUserSection() {
         </div>
       </div>
 
-      <div className="p-6">
+      <div className="p-6"  style={{height: '500px'}}>
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Main Form Row */}
           <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
