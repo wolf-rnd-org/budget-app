@@ -45,6 +45,24 @@ export function ExpensesTable({
   const [hasMore, setHasMore] = React.useState(true);
   const pageSize = 20;
 
+  // Helpers to handle file download links from server
+  const normalizeFiles = (files: any): { url: string; name?: string }[] => {
+    if (!files) return [];
+    if (typeof files === 'string') return files ? [{ url: files }] : [];
+    if (Array.isArray(files)) {
+      return files
+        .map((f) => (typeof f === 'string' ? { url: f } : { url: f?.url || '', name: f?.name }))
+        .filter((f) => !!f.url);
+    }
+    if (typeof files === 'object' && files.url) return [{ url: files.url, name: files.name }];
+    return [];
+  };
+
+  const buildRedirectUrl = (expenseId: string, field: 'invoice_file' | 'bank_details_file', index: number) => {
+    const base = (expensesApi.defaults.baseURL || '').replace(/\/$/, '');
+    return `${base}/${expenseId}/files/${field}/${index}`;
+  };
+
   const onRowClick = (expenseId: string) => {
     setExpandedRow(expandedRow === expenseId ? null : expenseId);
   };
@@ -433,7 +451,7 @@ export function ExpensesTable({
                                 {Array.isArray(expense.categories) ? 
                                   expense.categories.map((cat, idx) => (
                                     <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                                      {cat}
+                                      {typeof cat === 'string' ? cat : (cat?.name ?? cat?.id ?? '—')}
                                     </span>
                                   )) :
                                   <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
@@ -472,7 +490,15 @@ export function ExpensesTable({
                             <h5 className="text-sm font-semibold text-gray-700 mb-3">קבצים מצורפים</h5>
                             <div className="flex flex-wrap gap-3">
                               <a
-                                href={expense.invoice_file} 
+                                href={Array.isArray(expense.invoice_file)
+                                  ? (isMockMode()
+                                      ? (typeof (expense.invoice_file as any)[0] === 'string'
+                                          ? (expense.invoice_file as any)[0]
+                                          : ((expense.invoice_file as any)[0]?.url || ''))
+                                      : buildRedirectUrl(expense.id, 'invoice_file', 0))
+                                  : (typeof expense.invoice_file === 'string'
+                                      ? expense.invoice_file
+                                      : ((expense.invoice_file as any)?.url || ''))} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
@@ -485,7 +511,15 @@ export function ExpensesTable({
                               
                               {expense.bank_details_file && (
                                 <a
-                                  href={expense.bank_details_file} 
+                                  href={Array.isArray(expense.bank_details_file)
+                                    ? (isMockMode()
+                                        ? (typeof (expense.bank_details_file as any)[0] === 'string'
+                                            ? (expense.bank_details_file as any)[0]
+                                            : ((expense.bank_details_file as any)[0]?.url || ''))
+                                        : buildRedirectUrl(expense.id, 'bank_details_file', 0))
+                                    : (typeof expense.bank_details_file === 'string'
+                                        ? expense.bank_details_file
+                                        : ((expense.bank_details_file as any)?.url || ''))} 
                                   target="_blank" 
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
