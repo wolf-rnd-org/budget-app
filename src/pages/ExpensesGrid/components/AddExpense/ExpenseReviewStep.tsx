@@ -2,6 +2,7 @@ import React from 'react';
 import { ArrowLeft, Save, X, Upload, CheckCircle, FileText, AlertCircle } from 'lucide-react';
 import { budgetApi, isMockMode } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
+import { useProgramsStore } from '@/stores/programsStore';
 import { ParsedInvoiceData } from './AddExpenseWizard';
 import { CategoriesField } from './CategoriesField';
 import { AIAnalysisBanner } from './AIAnalysisBanner';
@@ -40,9 +41,9 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
   const [invoiceFile, setInvoiceFile] = React.useState<File | null>(initialInvoiceFile ?? null);
 
 
-  const programs = useAuthStore(s => s.programs);
-  const programsLoading = useAuthStore(s => s.programsLoading);
-  const currentProgramId = useAuthStore(s => s.currentProgramId);
+  const programs = useProgramsStore(s => s.programs);
+  const programsLoading = useProgramsStore(s => s.loading);
+  const currentProgramId = useProgramsStore(s => s.selectedProgramId);
   // const user = useAuthStore(s=>s.user);
 
   const prevProgramIdRef = React.useRef(formData.program_id);
@@ -71,7 +72,7 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
     const file = event.target.files?.[0];
     if (file) {
       if (file.size > 10 * 1024 * 1024) {
-        setError('קובץ פרטי הבנק גדול מדי (מקסימום 10MB)');
+        setError(`קובץ פרטי הבנק גדול מדי (מקסימום 10MB)`);
         return;
       }
       setBankFile(file);
@@ -286,8 +287,7 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
             <div className="p-6 border-b border-gray-200">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">קטגוריות</h4>
               <CategoriesField
-                program_id={formData.program_id}
-                selectedCategories={formData.categories}
+                                selectedCategories={formData.categories}
                 onChange={(categories) => handleInputChange('categories', categories)}
               />
             </div>

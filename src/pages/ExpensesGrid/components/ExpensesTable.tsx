@@ -390,13 +390,14 @@ export function ExpensesTable({
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       >
                         <Edit3 className="w-4 h-4" />
-                      </button> */}
-                      {/* <button
+                      </button>
+                      <button
                         onClick={(e) => onDelete(expense, e)}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button> */}
+                      
                       <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                         {expandedRow === expense.id ? 
                           <ChevronUp className="w-4 h-4" /> : 
@@ -498,7 +499,8 @@ export function ExpensesTable({
                                       : buildRedirectUrl(expense.id, 'invoice_file', 0))
                                   : (typeof expense.invoice_file === 'string'
                                       ? expense.invoice_file
-                                      : ((expense.invoice_file as any)?.url || ''))} 
+                                      : ((expense.invoice_file as any)?.url || ''))}
+                                style={{ display: (normalizeFiles as any)(expense.invoice_file).length > 0 ? 'inline-flex' : 'none' }} 
                                 target="_blank" 
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
@@ -509,7 +511,7 @@ export function ExpensesTable({
                                 חשבונית
                               </a>
                               
-                              {expense.bank_details_file && (
+                              {(normalizeFiles as any)(expense.bank_details_file).length > 0 && (
                                 <a
                                   href={Array.isArray(expense.bank_details_file)
                                     ? (isMockMode()

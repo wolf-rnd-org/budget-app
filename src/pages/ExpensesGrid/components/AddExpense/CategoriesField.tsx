@@ -1,10 +1,10 @@
 import React from 'react';
 import { createPortal } from 'react-dom';
-import { budgetApi } from '@/api/http';
+import { useCategoriesStore } from '@/stores/categoriesStore';
+import { useProgramsStore } from '@/stores/programsStore';
 
 
 interface CategoriesFieldProps {
-  program_id: string | '';
   // Selected category IDs
   selectedCategories: string[];
   onChange: (categories: string[]) => void;
@@ -16,33 +16,23 @@ interface CategoriesFieldProps {
 
 
 
-export function CategoriesField({program_id, selectedCategories, onChange, error }: CategoriesFieldProps) {
+export function CategoriesField({ selectedCategories, onChange, error }: CategoriesFieldProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const controlRef = React.useRef<HTMLButtonElement | null>(null);
   const panelRef = React.useRef<HTMLDivElement | null>(null);
   const [coords, setCoords] = React.useState<{ top: number; left: number; width: number } | null>(null);
-  const [categories, setCategories] = React.useState<{ recId: string; name: string }[]>([]);
-  const [loading, setLoading] = React.useState(false);
-
+  const categoriesByProgram = useCategoriesStore(s => s.categoriesByProgram);
+  const fetchForProgram = useCategoriesStore(s => s.fetchForProgram);
+  const selectedProgramId = useProgramsStore(s => s.selectedProgramId);
+  const programCats = selectedProgramId ? categoriesByProgram[selectedProgramId] : undefined;
+  const categories = programCats?.items || [];
+  const loading = programCats?.loading || false;
   React.useEffect(() => {
-    let cancelled = false;
-    async function fetchCategories() {
-      if (!program_id) { setCategories([]); return; }
-      setLoading(true);
-      try {
-        const res = await budgetApi.get('/categories', { params: { program_id } });
-        if (!cancelled) setCategories(res.data);
-      } catch (err) {
-        console.error("failed to load categories", err);
-        if (!cancelled) setCategories([]);
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
+    if (selectedProgramId && !categoriesByProgram[selectedProgramId]) {
+      fetchForProgram(selectedProgramId);
     }
-    fetchCategories();
-    return () => { cancelled = true; };
-  }, [program_id]);
+  }, [selectedProgramId, categoriesByProgram, fetchForProgram]);
 
   React.useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -124,6 +114,9 @@ export function CategoriesField({program_id, selectedCategories, onChange, error
               />
             </div>
             <div className="max-h-56 overflow-auto p-1">
+              {loading && (
+                <div className="px-3 py-2 text-sm text-gray-500">טוען קטגוריות...</div>
+              )}
               {filtered.map((cat) => (
                 <label
                   key={cat.recId}

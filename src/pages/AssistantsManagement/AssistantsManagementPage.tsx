@@ -2,6 +2,7 @@ import React from 'react';
 import { Users, UserPlus, Trash2, AlertCircle, CheckCircle, ArrowLeft, Search, ChevronDown, User, Mail } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/stores/authStore';
+import { useProgramsStore } from '@/stores/programsStore';
 import { authApi, programsApi, isMockMode } from '@/api/http';
 import { ProjectAssignmentDropdown, CopyToClipboardField, type Project } from '@/components/shared';
 import { ROLES, getRoleDisplayName } from '@/constants/roles';
@@ -26,7 +27,8 @@ interface ExistingAssistant {
 
 export function AssistantsManagementPage() {
   const navigate = useNavigate();
-  const { user, programs } = useAuthStore();
+  const { user } = useAuthStore();
+  const programs = useProgramsStore(s => s.programs);
   const [assistants, setAssistants] = React.useState<Assistant[]>([]);
   const [existingAssistants, setExistingAssistants] = React.useState<ExistingAssistant[]>([]);
   const [loading, setLoading] = React.useState(true);

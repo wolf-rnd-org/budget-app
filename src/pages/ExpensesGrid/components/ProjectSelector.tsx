@@ -1,6 +1,7 @@
 import React from 'react';
 import { ChevronDown, Building2, AlertCircle, RefreshCw } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
+import { useProgramsStore } from '@/stores/programsStore';
 import { getProgramsByUserId } from '@/api/programs';
 
 interface UserProgram {
@@ -9,17 +10,15 @@ interface UserProgram {
 }
 
 export function ProjectSelector() {
-  const {
-    user,
-    currentProgramId,
-    setCurrentProgramId,
-    programs,
-    programsLoading,
-    programsError,
-    setPrograms,
-    setProgramsLoading,
-    setProgramsError,
-  } = useAuthStore();
+  const { user } = useAuthStore();
+  const currentProgramId = useProgramsStore(s => s.selectedProgramId);
+  const setCurrentProgramId = useProgramsStore(s => s.setSelectedProgramId);
+  const programs = useProgramsStore(s => s.programs);
+  const programsLoading = useProgramsStore(s => s.loading);
+  const programsError = useProgramsStore(s => s.error);
+  const setPrograms = useProgramsStore(s => s.setPrograms);
+  const setProgramsLoading = useProgramsStore(s => s.setLoading);
+  const setProgramsError = useProgramsStore(s => s.setError);
 
   const [isOpen, setIsOpen] = React.useState(false);
 
