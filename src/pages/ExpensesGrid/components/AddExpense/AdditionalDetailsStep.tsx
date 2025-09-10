@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Save, X } from 'lucide-react';
-import { budgetApi, expensesApi, isMockMode } from '@/api/http';
+import { budgetApi, expensesApi, isMockMode, getFundingSources } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import type { ParsedInvoiceData } from './AddExpenseWizard';
@@ -28,6 +28,11 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
+  const [fundingSourceId, setFundingSourceId] = React.useState("");
+  const [fundingSources, setFundingSources] = React.useState<{ id: string; name: string }[]>([]);
+  const [fundingSourcesLoading, setFundingSourcesLoading] = React.useState(false);
+  const [fundingSourcesError, setFundingSourcesError] = React.useState<string | null>(null);
+
   const overLimitWithNew = React.useMemo(() => {
     if (!totalBudget || totalBudget <= 0) return false;
     const amount = Number(parsedData.amount) || 0;
@@ -41,6 +46,34 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
       setProgramId(auto);
     }
   }, [programs, currentProgramId]);
+  React.useEffect(() => {
+    if (!programId) {
+      setFundingSources([]);
+      setFundingSourcesError(null);
+      setFundingSourceId("");
+      return;
+    }
+    (async () => {
+      try {
+        setFundingSourcesLoading(true);
+        setFundingSourcesError(null);
+        const { data } = await getFundingSources(programId);
+        const list = Array.isArray(data) ? data : [];
+        setFundingSources(list);
+
+        if (!list.some(fs => fs.id === fundingSourceId)) {
+          setFundingSourceId("");
+        }
+      } catch (e) {
+        console.error('Load funding sources failed', e);
+        setFundingSources([]);
+        setFundingSourcesError('נכשלה טעינת מקורות המימון');
+        setFundingSourceId("");
+      } finally {
+        setFundingSourcesLoading(false);
+      }
+    })();
+  }, [programId]);
 
   const handleSubmit = async () => {
     setAttemptedSubmit(true);
@@ -52,7 +85,10 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
       setError('נא לבחור לפחות קטגוריה אחת');
       return;
     }
-
+    if (!fundingSourceId) {
+      setError('יש לבחור מקור מימון (קבלה על שם)');
+      return;
+    }
     try {
       setLoading(true);
       setError(null);
@@ -78,6 +114,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
         // From this step
         program_id: programId,
         categories,
+        funding_source_id: fundingSourceId,
 
         // System
         user_id: user.userId,
@@ -133,8 +170,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
                   <select
                     value={programId}
                     onChange={(e) => setProgramId(e.target.value)}
-                    className={`w-full px-4 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white [appearance:auto] ${
-                      attemptedSubmit && !programId ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-4 pr-10 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white [appearance:auto] ${attemptedSubmit && !programId ? 'border-red-500' : 'border-gray-300'
                       }`}
                     required
                     disabled={programsLoading || programs.length === 0}
@@ -157,6 +193,31 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
                   error={attemptedSubmit && categories.length === 0}
                 />
               </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">קבלה על שם</label>
+                <select
+                  value={fundingSourceId}
+                  onChange={(e) => setFundingSourceId(e.target.value)}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
+                  disabled={fundingSourcesLoading || fundingSources.length === 0 || !programId}
+                  required
+                >
+                  <option value="" disabled>
+                    {!programId
+                      ? "בחרי תחילה תכנית"
+                      : fundingSourcesLoading
+                        ? "טוען מקורות מימון…"
+                        : (fundingSources.length ? "בחרי מקור מימון…" : "לא נמצאו מקורות מימון לתכנית")}
+                  </option>
+                  {fundingSources.map(fs => (
+                    <option key={fs.id} value={fs.id}>{fs.name}</option>
+                  ))}
+                </select>
+                {fundingSourcesError && (
+                  <p className="text-sm text-red-600 mt-2">{fundingSourcesError}</p>
+                )}
+              </div>
+
             </div>
           </div>
 
