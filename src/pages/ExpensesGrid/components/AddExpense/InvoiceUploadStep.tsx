@@ -54,8 +54,8 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
   const handleInvoiceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('קובץ חשבונית גדול מדי (עד 10MB)');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('קובץ חשבונית גדול מדי (עד 5MB)');
         return;
       }
       setInvoiceFile(file);
@@ -66,8 +66,8 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
   const handleBankUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('קובץ פרטי בנק גדול מדי (עד 10MB)');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('קובץ פרטי בנק גדול מדי (עד 5MB)');
         return;
       }
       setBankFile(file);
@@ -172,7 +172,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-gray-900">חשבונית (חובה)</h4>
                 {!invoiceFile ? (
-                  <p className="text-xs text-gray-600">PDF, JPG, PNG עד 10MB</p>
+                  <p className="text-xs text-gray-600">PDF, JPG, PNG עד 5MB</p>
                 ) : (
                   <div className="flex items-center gap-2 text-green-700">
                     <CheckCircle className="w-4 h-4" />
@@ -197,7 +197,7 @@ export function InvoiceUploadStep({ onComplete }: InvoiceUploadStepProps) {
               <div className="flex-1 min-w-0">
                 <h4 className="text-sm font-medium text-gray-900">פרטי בנק (אופציונלי)</h4>
                 {!bankFile ? (
-                  <p className="text-xs text-gray-600">PDF, JPG, PNG עד 10MB</p>
+                  <p className="text-xs text-gray-600">PDF, JPG, PNG עד 5MB</p>
                 ) : (
                   <div className="flex items-center gap-2 text-green-700">
                     <CheckCircle className="w-4 h-4" />

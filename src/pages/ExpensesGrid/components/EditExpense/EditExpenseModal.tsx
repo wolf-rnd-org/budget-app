@@ -147,8 +147,8 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
   const handleInvoiceUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('קובץ החשבונית גדול מדי (מקסימום 10MB)');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('קובץ החשבונית גדול מדי (מקסימום 5MB)');
         return;
       }
       setNewInvoiceFile(file);
@@ -160,8 +160,8 @@ export function EditExpenseModal({ isOpen, expenseId, onClose, onSuccess }: Edit
   const handleBankUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      if (file.size > 10 * 1024 * 1024) {
-        setError('קובץ פרטי הבנק גדול מדי (מקסימום 10MB)');
+      if (file.size > 5 * 1024 * 1024) {
+        setError('קובץ פרטי הבנק גדול מדי (מקסימום 5MB)');
         return;
       }
       setNewBankFile(file);
