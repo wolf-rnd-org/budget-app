@@ -40,7 +40,15 @@ export const expensesApi = axios.create({
 export const documentsApi = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
 });
+// Funding Sources API 
+export type FundingSourceDTO = { id: string; name: string };
 
+export function getFundingSources(programId: string) {
+  return budgetApi.get('/funding-sources', {  
+    params: { program_id: programId },
+    withCredentials: false,
+  });
+}
 // Common interceptors
 function attach401Interceptor(instance: typeof authApi) {
   instance.interceptors.response.use(
