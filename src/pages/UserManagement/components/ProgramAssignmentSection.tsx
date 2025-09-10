@@ -42,7 +42,7 @@ export function ProgramAssignmentSection() {
   const [error, setError] = React.useState<string | null>(null);
   const [userSuccessMessages, setUserSuccessMessages] = React.useState<Map<string, string>>(new Map());
   const [copiedPasswords, setCopiedPasswords] = React.useState<Set<string>>(new Set());
-  
+
   // Search and dropdown states
   const [userSearch, setUserSearch] = React.useState('');
   const [openDropdowns, setOpenDropdowns] = React.useState<Set<string>>(new Set());
@@ -61,10 +61,10 @@ export function ProgramAssignmentSection() {
       setError(null);
 
       // if (isMockMode()) {
-       if (false) {
+      if (false) {
         // Mock data with more programs to simulate large dataset
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         const mockPrograms: Program[] = [
           { id: '24640', name: 'תנועת בתיה תנועה בתנועה' },
           { id: '24864', name: 'פנאי למידה העשרה וחוויה תנועת בתיה' },
@@ -93,7 +93,7 @@ export function ProgramAssignmentSection() {
 
         setPrograms(mockPrograms);
         setUsers(mockUsers);
-        
+
         // Initialize assignments with some mock data
         const initialAssignments = mockUsers.map(user => ({
           userId: user.id,
@@ -199,7 +199,7 @@ export function ProgramAssignmentSection() {
 
   const handleProgramToggle = async (userId: string, programId: string) => {
     const isAssigned = assignments.find(a => a.userId === userId)?.programIds.includes(programId);
-    
+
     // Update UI optimistically
     setAssignments(prev => prev.map(assignment => {
       if (assignment.userId === userId) {
@@ -212,7 +212,7 @@ export function ProgramAssignmentSection() {
       }
       return assignment;
     }));
-    
+
     // Clear previous messages
     setUserSuccessMessages(prev => {
       const newMap = new Map(prev);
@@ -220,10 +220,10 @@ export function ProgramAssignmentSection() {
       return newMap;
     });
     setError(null);
-    
+
     // Auto-save the change
     await handleSaveUserAssignments(userId, isAssigned ? 'removed' : 'added');
-    
+
     // Close dropdown after selection
     setOpenDropdowns(prev => new Set());
   };
@@ -232,7 +232,7 @@ export function ProgramAssignmentSection() {
     try {
       setSavingUsers(prev => new Set(prev).add(userId));
       setError(null);
-      
+
       // Clear previous success message for this user
       setUserSuccessMessages(prev => {
         const newMap = new Map(prev);
@@ -246,11 +246,11 @@ export function ProgramAssignmentSection() {
       if (isMockMode()) {
         // Mock save
         await new Promise(resolve => setTimeout(resolve, 500));
-        const message = action === 'added' ? 'פרויקט נוסף בהצלחה!' : 
-                       action === 'removed' ? 'פרויקט הוסר בהצלחה!' : 
-                       'שיוכי הפרויקטים נשמרו בהצלחה!';
+        const message = action === 'added' ? 'פרויקט נוסף בהצלחה!' :
+          action === 'removed' ? 'פרויקט הוסר בהצלחה!' :
+            'שיוכי הפרויקטים נשמרו בהצלחה!';
         setUserSuccessMessages(prev => new Map(prev).set(userId, message));
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => {
           setUserSuccessMessages(prev => {
@@ -264,11 +264,11 @@ export function ProgramAssignmentSection() {
         await authApi.post(`/user/${userId}/programs`, {
           programIds: userAssignment.programIds,
         });
-        const message = action === 'added' ? 'פרויקט נוסף בהצלחה!' : 
-                       action === 'removed' ? 'פרויקט הוסר בהצלחה!' : 
-                       'שיוכי הפרויקטים נשמרו בהצלחה!';
+        const message = action === 'added' ? 'פרויקט נוסף בהצלחה!' :
+          action === 'removed' ? 'פרויקט הוסר בהצלחה!' :
+            'שיוכי הפרויקטים נשמרו בהצלחה!';
         setUserSuccessMessages(prev => new Map(prev).set(userId, message));
-        
+
         // Clear success message after 3 seconds
         setTimeout(() => {
           setUserSuccessMessages(prev => {
@@ -292,10 +292,10 @@ export function ProgramAssignmentSection() {
 
   const handleDeleteUser = async (userId: string) => {
     const user = users.find(u => u.id === userId);
-    const userName = user?.first_name && user?.last_name 
-      ? `${user.first_name} ${user.last_name}` 
+    const userName = user?.first_name && user?.last_name
+      ? `${user.first_name} ${user.last_name}`
       : user?.email || userId;
-    
+
     if (!confirm(`האם אתה בטוח שברצונך למחוק את המשתמש ${userName}?`)) {
       return;
     }
@@ -307,7 +307,7 @@ export function ProgramAssignmentSection() {
       if (isMockMode()) {
         // Mock delete
         await new Promise(resolve => setTimeout(resolve, 1000));
-        
+
         // Remove user from state
         setUsers(prev => prev.filter(u => u.id !== userId));
         setAssignments(prev => prev.filter(a => a.userId !== userId));
@@ -319,7 +319,7 @@ export function ProgramAssignmentSection() {
       } else {
         // Real API call
         await authApi.delete(`/user/${userId}`);
-        
+
         // Remove user from state
         setUsers(prev => prev.filter(u => u.id !== userId));
         setAssignments(prev => prev.filter(a => a.userId !== userId));
@@ -404,7 +404,7 @@ export function ProgramAssignmentSection() {
   const getAvailableProgramsForUser = (userId: string) => {
     const assignment = getUserAssignment(userId);
     const search = getProgramSearch(userId).toLowerCase();
-    return programs.filter(p => 
+    return programs.filter(p =>
       !assignment.programIds.includes(p.id) &&
       p.name.toLowerCase().includes(search)
     );
@@ -414,9 +414,9 @@ export function ProgramAssignmentSection() {
   const filteredUsers = users.filter(user => {
     const searchTerm = userSearch.toLowerCase();
     const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
-    return fullName.includes(searchTerm) || 
-           user.email.toLowerCase().includes(searchTerm) ||
-           getRoleDisplayName(user.role_label).toLowerCase().includes(searchTerm);
+    return fullName.includes(searchTerm) ||
+      user.email.toLowerCase().includes(searchTerm) ||
+      getRoleDisplayName(user.role_label).toLowerCase().includes(searchTerm);
   });
 
   if (loading) {
@@ -438,7 +438,7 @@ export function ProgramAssignmentSection() {
             </div>
             <h2 className="text-xl font-semibold text-gray-900">שיוך פרויקטים למשתמשים</h2>
           </div>
-          
+
           <button
             onClick={fetchData}
             disabled={loading}
@@ -498,7 +498,7 @@ export function ProgramAssignmentSection() {
                     const userSuccessMessage = userSuccessMessages.get(user.id);
                     const isPasswordCopied = copiedPasswords.has(user.id);
                     const isDropdownOpen = openDropdowns.has(user.id);
-                    
+
                     return (
                       <tr key={user.id} className="hover:bg-gray-50 transition-colors">
                         {/* User Info */}
@@ -511,14 +511,18 @@ export function ProgramAssignmentSection() {
                             </div>
                             <div className="min-w-0">
                               <p className="font-medium text-gray-900 truncate">
-                                {user.first_name && user.last_name 
-                                  ? `${user.first_name} ${user.last_name}` 
+                                {user.first_name && user.last_name
+                                  ? `${user.first_name} ${user.last_name}`
                                   : user.email}
                               </p>
-                              
+
                               <p className="text-sm text-gray-600 truncate">{user.email}</p>
                               <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full mt-1">
                                 {getRoleDisplayName(user.role_label)}
+                              </span>
+
+                              <span className="inline-block text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full mt-1">
+                                userId:  {getRoleDisplayName(user.user_id)}
                               </span>
                             </div>
                           </div>
@@ -536,11 +540,10 @@ export function ProgramAssignmentSection() {
                               />
                               <button
                                 onClick={() => copyToClipboard(user.password!, user.id)}
-                                className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
-                                  isPasswordCopied 
-                                    ? 'bg-green-600 text-white' 
+                                className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isPasswordCopied
+                                    ? 'bg-green-600 text-white'
                                     : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                                }`}
+                                  }`}
                               >
                                 <Copy className="w-3 h-3" />
                                 {isPasswordCopied ? 'הועתק!' : 'העתק'}
@@ -574,7 +577,7 @@ export function ProgramAssignmentSection() {
                                 ))}
                               </div>
                             )}
-                            
+
                             {/* Success Message */}
                             {userSuccessMessage && (
                               <div className="bg-green-50 border border-green-200 rounded-lg p-2 flex items-center gap-2">
@@ -589,7 +592,7 @@ export function ProgramAssignmentSection() {
                         <td className="px-4 py-4">
                           <div className="relative">
                             <button
-                              onClick={() => toggleDropdown(user.id)} disabled style={{cursor: 'not-allowed'}}
+                              onClick={() => toggleDropdown(user.id)} disabled style={{ cursor: 'not-allowed' }}
                               className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-3 py-2 rounded-lg text-sm font-medium transition-all min-w-[140px] justify-between"
                             >
                               <span>הוסף פרויקט</span>
@@ -599,11 +602,11 @@ export function ProgramAssignmentSection() {
                             {isDropdownOpen && (
                               <>
                                 {/* Backdrop */}
-                                <div 
-                                  className="fixed inset-0 z-10" 
+                                <div
+                                  className="fixed inset-0 z-10"
                                   onClick={() => toggleDropdown(user.id)}
                                 />
-                                
+
                                 {/* Dropdown */}
                                 <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden min-w-[300px]">
                                   {/* Search */}
@@ -659,7 +662,7 @@ export function ProgramAssignmentSection() {
                               </div>
                             </div>
                           )}
-                          <button  style={{cursor: 'not-allowed'}}
+                          <button style={{ cursor: 'not-allowed' }}
                             onClick={() => handleDeleteUser(user.id)}
                             disabled={deletingUsers.has(user.id)}
                             className="inline-flex items-center gap-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white px-4 py-2 rounded-lg text-sm font-medium transition-all min-w-[100px] justify-center"

@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { AuthUser, MeResponse } from '@/api/types';
 import { useProgramsStore } from '@/stores/programsStore';
+import { useCategoriesStore } from '@/stores/categoriesStore';
 
 interface AuthState {
   user: AuthUser | null;
@@ -36,6 +37,8 @@ export const useAuthStore = create<AuthState>()(
         try {
           const ps = useProgramsStore.getState();
           ps.clear();
+          const cs = useCategoriesStore.getState();
+          cs.clearAll();
         } catch {}
         localStorage.removeItem('authToken');
       },

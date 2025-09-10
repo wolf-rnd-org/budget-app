@@ -227,7 +227,7 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
                 >
                   <option value="חשבונית מס">חשבונית מס</option>
                   <option value="חשבון עסקה">חשבון עסקה</option>
-                  <option value="קבלה">קבלה</option>
+                  <option value=">דרישת תשלום">דרישת תשלום</option>
                 </select>
               </div>
 

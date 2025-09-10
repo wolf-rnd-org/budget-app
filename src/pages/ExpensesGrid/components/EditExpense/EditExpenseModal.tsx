@@ -140,6 +140,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
             status: mockExpense.status,
           });
         } else {
+
           const response = await expensesApi.get(`/expenses/${expenseId}`);
           const expenseData = response.data;
 
@@ -389,7 +390,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                         <option value="">בחר סוג חשבונית</option>
                         <option value="חשבונית מס">חשבונית מס</option>
                         <option value="חשבון עסקה">חשבון עסקה</option>
-                        <option value="קבלה">קבלה</option>
+                        <option value=">דרישת תשלום">דרישת תשלום</option>
                       </select>
                     </div>
                     
