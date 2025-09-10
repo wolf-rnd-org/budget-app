@@ -1,6 +1,7 @@
 // src/api/expenses.ts
 import { expensesApi, isMockMode } from './http';
 import { Expense } from './types';
+import { useAuthStore } from '@/stores/authStore';
 
 interface GetExpensesParams {
   user_id?: number; // optional: omit when user has expenses.view
@@ -14,10 +15,14 @@ interface GetExpensesParams {
   priority?: 'urgent' | 'normal' | '';
   sort_by?: string; // e.g., supplier_name | date | amount | status
   sort_dir?: 'asc' | 'desc';
+  // userActions removed - will be automatically retrieved from auth store
 }
 
-export async function getExpenses(  params: GetExpensesParams): Promise<{ data: Expense[]; hasMore: boolean; totalCount?: number }> {
+export async function getExpenses(params: GetExpensesParams): Promise<{ data: Expense[]; hasMore: boolean; totalCount?: number }> {
   const { user_id, programId, page = 1, pageSize = 20, searchText, status, dateFrom, dateTo, priority, sort_by, sort_dir } = params;
+  
+  // Always get user actions from auth store
+  const userActions = useAuthStore.getState().user?.actions || [];
   // ⚠️ ב־mock לקרוא לקובץ .json; ב־real לקרוא ל־endpoint
   const endpoint = isMockMode() ? '/expenses.json' : '/';
   const response = await expensesApi.get(endpoint, {
@@ -34,6 +39,8 @@ export async function getExpenses(  params: GetExpensesParams): Promise<{ data: 
       priority,
       sort_by,
       sort_dir,
+      // Send user actions for server-side permission checking
+      user_actions: userActions ? JSON.stringify(userActions) : undefined,
     },
     headers: { Accept: 'application/json' },
   });

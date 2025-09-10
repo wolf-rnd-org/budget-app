@@ -19,6 +19,10 @@ interface CategoriesState {
   fetchForProgram: (programId: string) => Promise<void>;
   setSelected: (programId: string, ids: string[]) => void;
   getSelected: (programId: string) => string[];
+  getCategories: (programId: string) => CategoryItem[];
+  getCategoriesState: (programId: string) => ProgramCategories;
+  clearAll: () => void;
+  clearProgram: (programId: string) => void;
 }
 
 export const useCategoriesStore = create<CategoriesState>((set, get) => ({
@@ -84,4 +88,24 @@ export const useCategoriesStore = create<CategoriesState>((set, get) => ({
     const s = get();
     return s.selectedByProgram[programId] || [];
   },
+  getCategories: (programId: string) => {
+    const s = get();
+    return s.categoriesByProgram[programId]?.items || [];
+  },
+  getCategoriesState: (programId: string) => {
+    const s = get();
+    return s.categoriesByProgram[programId] || { items: [], loading: false, error: null };
+  },
+  clearAll: () => set({ categoriesByProgram: {}, selectedByProgram: {} }),
+  clearProgram: (programId: string) =>
+    set((state) => {
+      const newCategoriesByProgram = { ...state.categoriesByProgram };
+      const newSelectedByProgram = { ...state.selectedByProgram };
+      delete newCategoriesByProgram[programId];
+      delete newSelectedByProgram[programId];
+      return {
+        categoriesByProgram: newCategoriesByProgram,
+        selectedByProgram: newSelectedByProgram,
+      };
+    }),
 }));

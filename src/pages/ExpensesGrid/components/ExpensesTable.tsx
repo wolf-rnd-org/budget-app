@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle } from 'lucide-react';
+import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -19,6 +19,18 @@ interface ExpensesTableProps {
   sortDir: 'asc' | 'desc';
   onSortChange?: (by: string, dir: 'asc' | 'desc') => void;
   programId: string | null;
+  // Add props for expenses data from parent
+  expenses: Expense[];
+  loading: boolean;
+  loadingMore: boolean;
+  hasMore: boolean;
+  onLoadMore: () => void;
+  // Show program column for admin view
+  showProgramColumn?: boolean;
+  // Show download files column for admin view
+  showDownloadColumn?: boolean;
+  // Callback when expense status is updated
+  onExpenseStatusUpdate?: (expense: Expense) => void;
 }
 
 export function ExpensesTable({
@@ -33,17 +45,19 @@ export function ExpensesTable({
   sortBy,
   sortDir,
   onSortChange,
-  programId
+  programId,
+  expenses,
+  loading,
+  loadingMore,
+  hasMore,
+  onLoadMore,
+  showProgramColumn = false,
+  showDownloadColumn = false,
+  onExpenseStatusUpdate
 }: ExpensesTableProps) {
   const { user } = useAuthStore();
-  const [expenses, setExpenses] = React.useState<Expense[]>([]);
-  const [loading, setLoading] = React.useState(true);
-  const [loadingMore, setLoadingMore] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
-  const [currentPage, setCurrentPage] = React.useState(1);
-  const [hasMore, setHasMore] = React.useState(true);
-  const pageSize = 20;
 
   // Helpers to handle file download links from server
   const normalizeFiles = (files: any): { url: string; name?: string }[] => {
@@ -58,9 +72,103 @@ export function ExpensesTable({
     return [];
   };
 
-  const buildRedirectUrl = (expenseId: string, field: 'invoice_file' | 'bank_details_file', index: number) => {
+  const buildRedirectUrl = (expenseId: string, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number) => {
     const base = (expensesApi.defaults.baseURL || '').replace(/\/$/, '');
     return `${base}/${expenseId}/files/${field}/${index}`;
+  };
+
+  // Handle file download to local computer
+  const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
+    try {
+      const url = buildRedirectUrl(expense.id, field, index);
+      
+      // Fetch the file as blob
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Download failed');
+      
+      const blob = await response.blob();
+      
+      // Create download link
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = downloadUrl;
+      link.download = fileName || `${field}_${expense.id}_${index + 1}`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      // Update expense status from 'new' to 'send_for_payment' after successful download
+      if (expense.status === 'new') {
+        await updateExpenseStatus(expense.id);
+      }
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback to opening in new tab if download fails
+      window.open(buildRedirectUrl(expense.id, field, index), '_blank');
+    }
+  };
+
+  // Update expense status to 'send_for_payment'
+  const updateExpenseStatus = async (expenseId: string) => {
+    try {
+      const response = await expensesApi.patch(`/${expenseId}/status`, {
+        status: 'new'
+      });
+      
+      if (response.data && onExpenseStatusUpdate) {
+        onExpenseStatusUpdate(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to update expense status:', error);
+    }
+  };
+
+  // Render download buttons for all file types
+  const renderDownloadButtons = (expense: Expense) => {
+    const fileTypes = [
+      { field: 'invoice_file' as const, label: 'חשבונית', files: expense.invoice_file },
+      { field: 'bank_details_file' as const, label: 'פרטי בנק', files: expense.bank_details_file },
+      { field: 'receipt_file' as const, label: 'קבלה', files: expense.receipt_file }
+    ];
+
+    const availableFiles = fileTypes.filter(({ files }) => {
+      const normalized = normalizeFiles(files);
+      return normalized.length > 0;
+    });
+
+    if (availableFiles.length === 0) {
+      return <span className="text-gray-400 text-xs">אין קבצים</span>;
+    }
+
+    return (
+      <div className="flex flex-col gap-1">
+        {availableFiles.map(({ field, label, files }) => {
+          const normalized = normalizeFiles(files);
+          return normalized.map((file, index) => {
+            const fileName = file.name || `${label}_${expense.supplier_name}_${expense.id}`;
+            return (
+              <button
+                key={`${field}-${index}`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFileDownload(expense, field, index, fileName);
+                }}
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs hover:bg-blue-50 px-1 py-0.5 rounded transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                {label}
+                {normalized.length > 1 && ` (${index + 1})`}
+              </button>
+            );
+          });
+        })}
+      </div>
+    );
   };
 
   const onRowClick = (expenseId: string) => {
@@ -109,82 +217,19 @@ export function ExpensesTable({
     }
   };
 
-  React.useEffect(() => {
-    if (!user?.userId || !programId) {
-      setLoading(false);
-      return;
-    }
-
-    async function fetchInitialExpenses() {
-      try {
-        setLoading(true);
-        const result = await getExpenses({ 
-          userId: user.userId, 
-          page: 1, 
-          pageSize ,
-          programId: programId,
-          searchText,
-          status: statusFilter || undefined,
-          dateFrom: dateFrom || undefined,
-          dateTo: dateTo || undefined,
-          priority: (priorityFilter as any) || undefined,
-          sort_by: sortBy,
-          sort_dir: sortDir,
-        });
-        setExpenses(result.data);
-        setHasMore(result.hasMore);
-        setCurrentPage(1);
-      } catch (err) {
-        setError('נכשל בטעינת ההוצאות');
-        console.error('Error fetching expenses:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-
-    fetchInitialExpenses();
-  }, [user?.userId, programId, searchText, statusFilter, dateFrom, dateTo, priorityFilter, sortBy, sortDir]);
-
-  const loadMoreExpenses = React.useCallback(async () => {
-    if (loadingMore || !hasMore || !user?.userId || !programId) return;
-    
-    try {
-      setLoadingMore(true);
-      const nextPage = currentPage + 1;
-      const result = await getExpenses({ 
-        userId: user.userId, 
-        page: nextPage, 
-        pageSize ,
-        programId: programId,
-        searchText,
-        status: statusFilter || undefined,
-        dateFrom: dateFrom || undefined,
-        dateTo: dateTo || undefined,
-        priority: (priorityFilter as any) || undefined,
-        sort_by: sortBy,
-        sort_dir: sortDir,
-      });
-      setExpenses(prev => [...prev, ...result.data]);
-      setHasMore(result.hasMore);
-      setCurrentPage(nextPage);
-    } catch (err) {
-      console.error('Error loading more expenses:', err);
-    } finally {
-      setLoadingMore(false);
-    }
-  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, programId, sortBy, sortDir, searchText, statusFilter, dateFrom, dateTo, priorityFilter]);
+  // Data fetching is now handled by parent component
 
   React.useEffect(() => {
     const handleScroll = () => {
       if (window.innerHeight + document.documentElement.scrollTop 
           >= document.documentElement.offsetHeight - 1000) {
-        loadMoreExpenses();
+        onLoadMore();
       }
     };
 
     window.addEventListener('scroll', handleScroll);
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [loadMoreExpenses]);
+  }, [onLoadMore]);
 
   // Server-side filtering now; render what server returns
   const filteredExpenses = expenses;
@@ -300,6 +345,12 @@ export function ExpensesTable({
               <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">תאריך</th>
               <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">סכום</th>
               <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">סטטוס</th>
+              {showProgramColumn && (
+                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">תוכנית</th>
+              )}
+              {showDownloadColumn && (
+                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">הורדת קבצים</th>
+              )}
               <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">פעולות</th>
             </tr>
             <tr className="bg-gray-50 border-b border-gray-200">
@@ -323,6 +374,16 @@ export function ExpensesTable({
                   <SortIcon field="status" />
                 </button>
               </th>
+              {showProgramColumn && (
+                <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+                  <button type="button" onClick={() => handleSortClick('program_name')} className="inline-flex items-center gap-1 hover:text-blue-600">
+                    <SortIcon field="program_name" />
+                  </button>
+                </th>
+              )}
+              {showDownloadColumn && (
+                <th className="px-6 pb-3 pt-0"></th>
+              )}
               <th className="px-6 pb-3 pt-0"></th>
             </tr>
           </thead>
@@ -359,6 +420,18 @@ export function ExpensesTable({
                       {getStatusText(expense.status)}
                     </span>
                   </td>
+                  {showProgramColumn && (
+                    <td className="px-6 py-4 text-gray-700">
+                      {expense.program_name || '—'}
+                    </td>
+                  )}
+                  {showDownloadColumn && (
+                    <td className="px-6 py-4">
+                      <div className="flex items-center justify-center gap-2">
+                        {renderDownloadButtons(expense)}
+                      </div>
+                    </td>
+                  )}
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <div className="relative group">
@@ -411,7 +484,11 @@ export function ExpensesTable({
                 {/* Accordion Content */}
                 {expandedRow === expense.id && (
                   <tr>
-                    <td colSpan={5} className="px-6 py-0">
+                    <td colSpan={
+                      (showProgramColumn ? 1 : 0) + 
+                      (showDownloadColumn ? 1 : 0) + 
+                      5 // base columns: supplier, date, amount, status, actions
+                    } className="px-6 py-0">
                       <div className="bg-gray-50 rounded-xl p-6 m-4 border border-gray-200">
                         <div className="mb-4">
                           <h4 className="text-lg font-semibold text-gray-900 mb-1">פרטי הוצאה נוספים</h4>

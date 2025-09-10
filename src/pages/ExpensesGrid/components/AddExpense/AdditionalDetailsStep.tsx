@@ -88,7 +88,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
       return;
     }
     if (!fundingSourceId) {
-      setError('יש לבחור מקור מימון (קבלה על שם)');
+      setError('יש לבחור על שם מי הקבלה');
       return;
     }
     try {
@@ -208,8 +208,8 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
                     {!programId
                       ? "בחרי תחילה תכנית"
                       : fundingSourcesLoading
-                        ? "טוען מקורות מימון…"
-                        : (fundingSources.length ? "בחרי מקור מימון…" : "לא נמצאו מקורות מימון לתכנית")}
+                        ? "טוען... "
+                        : (fundingSources.length ? "בחרי על שם מי הקבלה" : "לא נמצאו")}
                   </option>
                   {fundingSources.map(fs => (
                     <option key={fs.id} value={fs.id}>{fs.name}</option>

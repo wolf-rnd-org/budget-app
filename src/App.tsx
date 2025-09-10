@@ -9,6 +9,7 @@ import { AssistantsManagementPage } from '@/pages/AssistantsManagement';
 import { ProtectedRoute, UserProfile } from '@/components';
 import { useAuthStore } from '@/stores/authStore';
 import { getCurrentUser } from '@/api/auth';
+import { useCategoriesSync } from '@/hooks/useCategoriesSync';
 
 const theme = createTheme({
   palette: {
@@ -34,7 +35,7 @@ function Navbar() {
             <Link to="/" className="text-xl font-bold text-gray-900 hover:text-blue-600 transition-colors">
               אפליקציה לניהול הוצאות
             </Link>
-            
+
             {user && (
               <div className="hidden md:flex items-center gap-6">
                 <Link
@@ -73,6 +74,9 @@ function Navbar() {
 function App() {
   const { setUser, clearUser, setLoading } = useAuthStore();
 
+  // Automatically sync categories when selected program changes
+  useCategoriesSync();
+
   React.useEffect(() => {
     async function fetchCurrentUser() {
       try {
@@ -96,46 +100,46 @@ function App() {
           <Navbar />
           <Routes>
             <Route path="/login" element={<LoginPage />} />
-            <Route 
-              path="/expenses" 
+            <Route
+              path="/expenses"
               element={
                 <ProtectedRoute>
                   <ExpensesGridPage />
                 </ProtectedRoute>
               }
             >
-              <Route 
-                path="new" 
+              <Route
+                path="new"
                 element={
                   <ProtectedRoute requiredFeatures={['expenses.create']}>
                     <NewExpensePage />
                   </ProtectedRoute>
-                } 
+                }
               />
             </Route>
-            <Route 
-              path="/users" 
+            <Route
+              path="/users"
               element={
                 <ProtectedRoute requiredFeatures={['users.create']}>
                   <UserManagementPage />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/profile/assistants" 
+            <Route
+              path="/profile/assistants"
               element={
                 <ProtectedRoute requiredFeatures={['expenses.view']}>
                   <AssistantsManagementPage />
                 </ProtectedRoute>
-              } 
+              }
             />
-            <Route 
-              path="/" 
+            <Route
+              path="/"
               element={
                 <ProtectedRoute>
                   <ExpensesGridPage />
                 </ProtectedRoute>
-              } 
+              }
             />
           </Routes>
         </div>

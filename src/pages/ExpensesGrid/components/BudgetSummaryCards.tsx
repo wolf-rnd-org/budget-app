@@ -1,8 +1,6 @@
 import React from 'react';
 import { Wallet, TrendingUp, AlertTriangle } from 'lucide-react';
 import { formatCurrency } from '@/shared/utils';
-import { useProgramsStore } from '@/stores/programsStore';
-import { useCategoriesStore } from '@/stores/categoriesStore';
 
 interface BudgetSummaryCardsProps {
   totalBudget: number;
@@ -20,15 +18,6 @@ export function BudgetSummaryCards({
   const percentLeft = totalBudget > 0
     ? Math.max(0, Math.round((remainingBalance / totalBudget) * 100))
     : 0;
-
-  // When program changes, fetch categories and store them
-  const currentProgramId = useProgramsStore(s => s.selectedProgramId);
-  const fetchForProgram = useCategoriesStore(s => s.fetchForProgram);
-  React.useEffect(() => {
-    if (currentProgramId) {
-      fetchForProgram(currentProgramId);
-    }
-  }, [currentProgramId, fetchForProgram]);
 
   return (
     <>

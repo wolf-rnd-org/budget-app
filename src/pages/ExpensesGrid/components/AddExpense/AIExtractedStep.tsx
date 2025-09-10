@@ -21,19 +21,32 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
   const handleContinue = () => {
     setAttemptedNext(true);
     const isBlank = (v: any) => (typeof v === 'string' ? v.trim().length === 0 : v === null || v === undefined);
-    const allValid =
-      !isBlank(form.supplier_name) &&
-      !isBlank(form.business_number) &&
-      !isBlank(form.invoice_type) &&
-      !isBlank(form.invoice_description) &&
-      !isBlank(form.supplier_email) &&
-      (form.amount > 0) &&
-      !isBlank(form.bank_name) &&
-      !isBlank(form.bank_branch) &&
-      !isBlank(form.bank_account) &&
-      !isBlank(form.beneficiary);
 
-    if (!allValid) return;
+    const missingFields = [];
+    if (isBlank(form.supplier_name)) missingFields.push('שם ספק');
+    if (isBlank(form.business_number)) missingFields.push('מספר עוסק/ח.פ');
+    if (isBlank(form.invoice_type)) missingFields.push('סוג חשבונית');
+    if (isBlank(form.invoice_description)) missingFields.push('תיאור לחשבונית');
+    if (isBlank(form.supplier_email)) missingFields.push('אימייל ספק');
+    if (!(form.amount > 0)) missingFields.push('סכום תקין');
+    if (isBlank(form.bank_name)) missingFields.push('בנק');
+    if (isBlank(form.bank_branch)) missingFields.push('סניף');
+    if (isBlank(form.bank_account)) missingFields.push('מספר חשבון');
+    if (isBlank(form.beneficiary)) missingFields.push('מוטב');
+
+    const allValid = missingFields.length === 0;
+
+    if (!allValid) {
+      // Scroll to the first error field if invoice type is missing
+      if (isBlank(form.invoice_type)) {
+        const invoiceTypeSelect = document.querySelector('select[required]');
+        if (invoiceTypeSelect) {
+          invoiceTypeSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          invoiceTypeSelect.focus();
+        }
+      }
+      return;
+    }
     onNext(form);
   };
 
@@ -48,6 +61,7 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
           checklist={[
             !form.supplier_name && 'חסר שם ספק',
             !form.business_number && 'חסר מספר עוסק/ח.פ',
+            (!form.invoice_type || form.invoice_type.trim() === '') && 'חסר סוג חשבונית',
             !form.invoice_description && 'חסר תיאור לחשבונית',
             form.amount <= 0 && 'סכום לא תקין',
           ].filter(Boolean) as string[]}
@@ -66,9 +80,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.supplier_name}
                   onChange={(e) => handleChange('supplier_name', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.supplier_name || form.supplier_name.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.supplier_name || form.supplier_name.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
 
@@ -79,26 +92,30 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.business_number}
                   onChange={(e) => handleChange('business_number', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.business_number || form.business_number.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.business_number || form.business_number.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">סוג חשבונית</label>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  סוג חשבונית <span className="text-red-500">*</span>
+                </label>
                 <select
-                  value={form.invoice_type}
+                  value={form.invoice_type || ''}
                   onChange={(e) => handleChange('invoice_type', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${
-                    attemptedNext && (!form.invoice_type || form.invoice_type.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${attemptedNext && (!form.invoice_type || form.invoice_type.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 >
+                  <option value="">בחר סוג חשבונית</option>
                   <option value="חשבונית עסקה">חשבונית עסקה</option>
                   <option value="חשבונית מס">חשבונית מס</option>
-                  <option value="קבלה">קבלה</option>
+                  <option value="דרישת תשלום">דרישת תשלום</option>
                 </select>
+                {attemptedNext && (!form.invoice_type || form.invoice_type.trim() === '') && (
+                  <p className="mt-1 text-sm text-red-600">יש לבחור סוג חשבונית</p>
+                )}
               </div>
 
               <div>
@@ -109,9 +126,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.amount}
                   onChange={(e) => handleChange('amount', parseFloat(e.target.value) || 0)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && !(form.amount > 0) ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && !(form.amount > 0) ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
 
@@ -122,9 +138,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   onChange={(e) => handleChange('invoice_description', e.target.value)}
                   rows={3}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${
-                    attemptedNext && (!form.invoice_description || form.invoice_description.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent resize-none ${attemptedNext && (!form.invoice_description || form.invoice_description.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
 
@@ -135,9 +150,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.supplier_email}
                   onChange={(e) => handleChange('supplier_email', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.supplier_email || form.supplier_email.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.supplier_email || form.supplier_email.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
             </div>
@@ -154,9 +168,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.bank_name || ''}
                   onChange={(e) => handleChange('bank_name', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.bank_name || form.bank_name.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.bank_name || form.bank_name.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
               <div>
@@ -166,9 +179,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.bank_branch || ''}
                   onChange={(e) => handleChange('bank_branch', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.bank_branch || form.bank_branch.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.bank_branch || form.bank_branch.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
               <div className="md:col-span-2">
@@ -178,9 +190,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.bank_account || ''}
                   onChange={(e) => handleChange('bank_account', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.bank_account || form.bank_account.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.bank_account || form.bank_account.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
               <div className="md:col-span-2">
@@ -190,9 +201,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   value={form.beneficiary || ''}
                   onChange={(e) => handleChange('beneficiary', e.target.value)}
                   required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                    attemptedNext && (!form.beneficiary || form.beneficiary.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                  }`}
+                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.beneficiary || form.beneficiary.trim() === '') ? 'border-red-500' : 'border-gray-300'
+                    }`}
                 />
               </div>
             </div>

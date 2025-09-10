@@ -5,3 +5,5 @@ export { ExpensesTable } from './ExpensesTable';
 export { LoadingStates } from './LoadingStates';
 export { AddExpenseWizard } from './AddExpense';
 export { EditExpenseModal } from './EditExpense';
+export { AdminExpensesView } from './AdminExpensesView';
+export { RegularExpensesView } from './RegularExpensesView';

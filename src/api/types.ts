@@ -17,6 +17,7 @@ export type Expense = {
   project: string;
   date: string;
   program_id: string;
+  program_name?: string; // Program name for admin view
   // Server may return list of ids (legacy) or list of {id,name}
   categories: CategoryRef[] | string[] | string;
   amount: number;
@@ -26,6 +27,7 @@ export type Expense = {
   business_number: string;
   invoice_type: string;
   bank_details_file: string | string[] | { url: string; name?: string }[];
+  receipt_file?: string | string[] | { url: string; name?: string }[];
   bank_name?: string;
   bank_branch?: string;
   bank_account?: string;
