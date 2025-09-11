@@ -3,22 +3,22 @@ import axios from 'axios';
 const apiMode = import.meta.env.VITE_API_MODE || 'mock';
 
 export function isMockMode(): boolean {
-  
+
   return apiMode === 'mock';
 }
 
 // Auth API instance
 export const authApi = axios.create({
-  baseURL: isMockMode() 
-    ? '/mocks/auth' 
+  baseURL: isMockMode()
+    ? '/mocks/auth'
     : import.meta.env.VITE_AUTH_BASE_URL,
   timeout: 10000,
 });
 
 // Budget API instance
 export const budgetApi = axios.create({
-  baseURL: isMockMode() 
-    ? 'mocks/budgets' 
+  baseURL: isMockMode()
+    ? '/mocks/budgets'
     : `${import.meta.env.VITE_BUDGET_BASE_URL}`,
 });
 
@@ -41,13 +41,13 @@ export const documentsApi = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
 });
 // Funding Sources API 
-export type FundingSourceDTO = { id: string; name: string };
+export type FundingSourceDTO = { id: string; name: string; code?: string };
 
-export function getFundingSources(programId: string) {
-  return budgetApi.get('/funding-sources', {  
-    params: { program_id: programId },
+export async function getFundingSources() {
+  const { data } = await budgetApi.get<FundingSourceDTO[]>('/funding-sources', {
     withCredentials: false,
   });
+  return data;
 }
 // Common interceptors
 function attach401Interceptor(instance: typeof authApi) {
