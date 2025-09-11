@@ -1,6 +1,6 @@
 import React from 'react';
 import { ArrowLeft, Save, X } from 'lucide-react';
-import { expensesApi, isMockMode } from '@/api/http';
+import { expensesApi, isMockMode, getFundingSources, type FundingSourceDTO } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import type { ParsedInvoiceData } from './AddExpenseWizard';
@@ -29,7 +29,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
   const [error, setError] = React.useState<string | null>(null);
   const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
   const [fundingSourceId, setFundingSourceId] = React.useState("");
-  const [fundingSources, setFundingSources] = React.useState<{ id: string; name: string }[]>([]);
+  const [fundingSources, setFundingSources] = React.useState<FundingSourceDTO[]>([]);
   const [fundingSourcesLoading, setFundingSourcesLoading] = React.useState(false);
   const [fundingSourcesError, setFundingSourcesError] = React.useState<string | null>(null);
 
@@ -47,30 +47,20 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
     }
   }, [programs, currentProgramId]);
   React.useEffect(() => {
-    if (!programId) {
-      setFundingSources([]);
-      setFundingSourcesError(null);
-      setFundingSourceId("");
-      return;
-    }
     (async () => {
       try {
         setFundingSourcesLoading(true);
         setFundingSourcesError(null);
-        const list = [
-          { id: 'recdAu3AJT08rBFFT', name: 'סמינר הרב וולף' },
-          { id: 'reciQ3AZn4mb51LfF', name: 'אוהל אברהם' },
-        ];
+        const list = await getFundingSources(); // לפי השנה הנוכחית
         setFundingSources(list);
-
         if (!list.some(fs => fs.id === fundingSourceId)) {
-          setFundingSourceId("");
+          setFundingSourceId('');
         }
       } catch (e) {
         console.error('Load funding sources failed', e);
         setFundingSources([]);
         setFundingSourcesError('נכשלה טעינת מקורות המימון');
-        setFundingSourceId("");
+        setFundingSourceId('');
       } finally {
         setFundingSourcesLoading(false);
       }
