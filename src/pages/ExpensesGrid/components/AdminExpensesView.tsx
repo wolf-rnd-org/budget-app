@@ -16,6 +16,7 @@ export function AdminExpensesView() {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(true);
   const pageSize = 20;
+  const loadingRef = React.useRef(false);
 
   // Filter states
   const [searchText, setSearchText] = React.useState('');
@@ -64,27 +65,82 @@ export function AdminExpensesView() {
     fetchInitialExpenses();
   }, [user?.userId]);
 
+  // Fetch expenses when search/filter parameters change
+  React.useEffect(() => {
+    if (!user?.userId) return;
+
+    const fetchFilteredExpenses = async () => {
+      try {
+        setLoading(true);
+        const result = await getExpenses({
+          // No user_id filter for admin view - show all users' expenses
+          // No programId filter for admin view - show all programs
+          page: 1,
+          pageSize,
+          searchText: searchText || undefined,
+          status: statusFilter || undefined,
+          priority: (priorityFilter as any) || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        });
+        setExpenses(result.data);
+        setHasMore(result.hasMore);
+        setCurrentPage(1);
+      } catch (err) {
+        setError('נכשל בטעינת ההוצאות');
+        console.error('Error fetching filtered expenses:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce search to avoid too many requests - wait for user to finish typing
+    const timeoutId = setTimeout(() => {
+      fetchFilteredExpenses();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId]);
+
   const loadMoreExpenses = React.useCallback(async () => {
-    if (loadingMore || !hasMore || !user?.userId) return;
+    if (loadingMore || !hasMore || !user?.userId || loadingRef.current) return;
 
     try {
+      loadingRef.current = true;
       setLoadingMore(true);
       const nextPage = currentPage + 1;
       const result = await getExpenses({
         // No user_id filter for admin view
         // No programId filter for admin view
         page: nextPage,
-        pageSize
+        pageSize,
+        searchText: searchText || undefined,
+        status: statusFilter || undefined,
+        priority: (priorityFilter as any) || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        sort_by: sortBy,
+        sort_dir: sortDir,
       });
-      setExpenses(prev => [...prev, ...result.data]);
+
+      // Check if we already have these expenses to prevent duplicates
+      setExpenses(prev => {
+        const existingIds = new Set(prev.map(exp => exp.id));
+        const newExpenses = result.data.filter(exp => !existingIds.has(exp.id));
+        return [...prev, ...newExpenses];
+      });
+
       setHasMore(result.hasMore);
       setCurrentPage(nextPage);
     } catch (err) {
       console.error('Error loading more expenses:', err);
     } finally {
+      loadingRef.current = false;
       setLoadingMore(false);
     }
-  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId]);
+  }, [hasMore, loadingMore, pageSize, user?.userId, currentPage]);
 
   React.useEffect(() => {
     const handleScroll = () => {
