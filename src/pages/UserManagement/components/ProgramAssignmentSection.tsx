@@ -37,6 +37,7 @@ export function ProgramAssignmentSection() {
   const [hasMoreUsers, setHasMoreUsers] = React.useState(true);
   const [loadingMoreUsers, setLoadingMoreUsers] = React.useState(false);
   const loadMoreRef = React.useRef<HTMLDivElement | null>(null);
+  const loadingUsersRef = React.useRef(false);
   const [savingUsers, setSavingUsers] = React.useState<Set<string>>(new Set());
   const [deletingUsers, setDeletingUsers] = React.useState<Set<string>>(new Set());
   const [error, setError] = React.useState<string | null>(null);
@@ -52,6 +53,62 @@ export function ProgramAssignmentSection() {
   React.useEffect(() => {
     fetchData();
   }, [user?.userId]);
+
+  // Fetch users when search changes
+  React.useEffect(() => {
+    if (!user?.userId) return;
+
+    const fetchFilteredUsers = async () => {
+      try {
+        setLoading(true);
+        const [programsResponse, usersResponse] = await Promise.all([
+          programsApi.get(`/`),
+          authApi.get('/users', {
+            params: {
+              page: 1,
+              page_size: PAGE_SIZE,
+              search: userSearch || undefined
+            }
+          }),
+        ]);
+
+        const programsData: Program[] = programsResponse.data || [];
+        const normalizedUsers: User[] = (usersResponse.data || []).map((u: any) => ({
+          ...u,
+          id: String(u.id ?? u.user_id),
+        }));
+
+        setPrograms(programsData);
+        setUsers(normalizedUsers);
+        setPage(1);
+        setHasMoreUsers((normalizedUsers?.length || 0) === PAGE_SIZE);
+
+        // Initialize assignments from programs' user_ids mapping
+        const initialAssignments = normalizedUsers.map((u: User) => {
+          const uid = String(u.id);
+          const programIds = programsData
+            .filter(p => Array.isArray(p.user_ids) && p.user_ids!.map(String).includes(uid))
+            .map(p => p.id);
+          return { userId: uid, programIds };
+        });
+        setAssignments(initialAssignments);
+      } catch (err) {
+        setError('שגיאה בטעינת המשתמשים');
+        console.error('Error fetching filtered users:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce search to avoid too many requests - wait for user to finish typing
+    const timeoutId = setTimeout(() => {
+      if (userSearch.trim() !== '') {
+        fetchFilteredUsers();
+      }
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [userSearch, user?.userId]);
 
   const fetchData = async () => {
     if (!user?.userId) return;
@@ -136,14 +193,28 @@ export function ProgramAssignmentSection() {
 
   // Load next page of users when the sentinel becomes visible
   const loadMoreUsers = React.useCallback(async () => {
-    if (loadingMoreUsers || !hasMoreUsers || loading) return;
+    if (loadingMoreUsers || !hasMoreUsers || loading || loadingUsersRef.current) return;
     try {
+      loadingUsersRef.current = true;
       setLoadingMoreUsers(true);
       const nextPage = page + 1;
-      const res = await authApi.get('/users', { params: { page: nextPage, page_size: PAGE_SIZE } });
+      const res = await authApi.get('/users', {
+        params: {
+          page: nextPage,
+          page_size: PAGE_SIZE,
+          search: userSearch || undefined
+        }
+      });
       const newUsersRaw: any[] = res.data || [];
       const newUsers: User[] = newUsersRaw.map((u: any) => ({ ...u, id: String(u.id ?? u.user_id) }));
-      setUsers(prev => [...prev, ...newUsers]);
+
+      // Check if we already have these users to prevent duplicates
+      setUsers(prev => {
+        const existingIds = new Set(prev.map(user => user.id));
+        const uniqueNewUsers = newUsers.filter(user => !existingIds.has(user.id));
+        return [...prev, ...uniqueNewUsers];
+      });
+
       // Append blank assignments for newly loaded users
       setAssignments(prev => {
         const map = new Map(prev.map(a => [a.userId, a]));
@@ -166,9 +237,10 @@ export function ProgramAssignmentSection() {
       // Stop further attempts if server errors to avoid loops
       setHasMoreUsers(false);
     } finally {
+      loadingUsersRef.current = false;
       setLoadingMoreUsers(false);
     }
-  }, [loadingMoreUsers, hasMoreUsers, page, loading]);
+  }, [loadingMoreUsers, hasMoreUsers, page, loading, programs]);
 
   // IntersectionObserver to trigger loading more on scroll
   React.useEffect(() => {
@@ -410,14 +482,8 @@ export function ProgramAssignmentSection() {
     );
   };
 
-  // Filter users based on search
-  const filteredUsers = users.filter(user => {
-    const searchTerm = userSearch.toLowerCase();
-    const fullName = `${user.first_name || ''} ${user.last_name || ''}`.toLowerCase();
-    return fullName.includes(searchTerm) ||
-      user.email.toLowerCase().includes(searchTerm) ||
-      getRoleDisplayName(user.role_label).toLowerCase().includes(searchTerm);
-  });
+  // Users are now filtered on the server side
+  const filteredUsers = users;
 
   if (loading) {
     return (
@@ -541,8 +607,8 @@ export function ProgramAssignmentSection() {
                               <button
                                 onClick={() => copyToClipboard(user.password!, user.id)}
                                 className={`inline-flex items-center gap-1 px-3 py-2 rounded-lg text-sm font-medium transition-all ${isPasswordCopied
-                                    ? 'bg-green-600 text-white'
-                                    : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                                  ? 'bg-green-600 text-white'
+                                  : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
                                   }`}
                               >
                                 <Copy className="w-3 h-3" />
