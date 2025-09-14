@@ -32,14 +32,14 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
     if (isBlank(form.bank_name)) missingFields.push('בנק');
     if (isBlank(form.bank_branch)) missingFields.push('סניף');
     if (isBlank(form.bank_account)) missingFields.push('מספר חשבון');
-    if (isBlank(form.beneficiary)) missingFields.push('מוטב');
+    // if (isBlank(form.beneficiary)) missingFields.push('מוטב');
 
     const allValid = missingFields.length === 0;
 
     if (!allValid) {
       // Scroll to the first error field if invoice type is missing
       if (isBlank(form.invoice_type)) {
-        const invoiceTypeSelect = document.querySelector('select[required]');
+        const invoiceTypeSelect = document.querySelector('select[required]') as HTMLSelectElement | null;
         if (invoiceTypeSelect) {
           invoiceTypeSelect.scrollIntoView({ behavior: 'smooth', block: 'center' });
           invoiceTypeSelect.focus();
@@ -200,9 +200,9 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   type="text"
                   value={form.beneficiary || ''}
                   onChange={(e) => handleChange('beneficiary', e.target.value)}
-                  required
-                  className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${attemptedNext && (!form.beneficiary || form.beneficiary.trim() === '') ? 'border-red-500' : 'border-gray-300'
-                    }`}
+                  // required
+                  className="w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+
                 />
               </div>
             </div>
