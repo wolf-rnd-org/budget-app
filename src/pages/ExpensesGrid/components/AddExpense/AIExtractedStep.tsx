@@ -112,6 +112,8 @@ export default function AIExtractedStep({ parsedData, onBack, onNext, onCancel }
                   <option value="חשבונית עסקה">חשבונית עסקה</option>
                   <option value="חשבונית מס">חשבונית מס</option>
                   <option value="דרישת תשלום">דרישת תשלום</option>
+                  <option value="קבלה">קבלה</option>                
+                  <option value="חשבונית זיכוי">חשבונית זיכוי</option> 
                 </select>
                 {attemptedNext && (!form.invoice_type || form.invoice_type.trim() === '') && (
                   <p className="mt-1 text-sm text-red-600">יש לבחור סוג חשבונית</p>
