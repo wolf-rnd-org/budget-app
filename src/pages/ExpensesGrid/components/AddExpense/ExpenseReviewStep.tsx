@@ -144,7 +144,7 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
         user_id: user.userId,
         date: new Date().toISOString().split('T')[0],
         status: 'new',
-        
+
       };
 
       if (isMockMode()) {
@@ -226,8 +226,10 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
                   className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white"
                 >
                   <option value="חשבונית מס">חשבונית מס</option>
-                  <option value="חשבון עסקה">חשבון עסקה</option>
-                  <option value=">דרישת תשלום">דרישת תשלום</option>
+                  <option value="חשבונית עסקה">חשבונית עסקה</option>
+                  <option value="דרישת תשלום">דרישת תשלום</option>
+                  <option value="קבלה">קבלה</option>
+                  <option value="חשבונית זיכוי">חשבונית זיכוי</option>
                 </select>
               </div>
 
@@ -287,7 +289,7 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
             <div className="p-6 border-b border-gray-200">
               <h4 className="text-lg font-semibold text-gray-900 mb-4">קטגוריות</h4>
               <CategoriesField
-                                selectedCategories={formData.categories}
+                selectedCategories={formData.categories}
                 onChange={(categories) => handleInputChange('categories', categories)}
               />
             </div>
