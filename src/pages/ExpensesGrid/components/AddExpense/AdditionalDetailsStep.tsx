@@ -156,7 +156,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
             <h4 className="text-lg font-semibold text-gray-900 mb-4">פרטים נוספים</h4>
 
             <div className="grid grid-cols-1 gap-6">
-              <div>
+              {/* <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">תכנית</label>
                 <div className="relative">
                   <select
@@ -175,7 +175,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
                     ))}
                   </select>
                 </div>
-              </div>
+              </div> */}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">קטגוריות</label>
