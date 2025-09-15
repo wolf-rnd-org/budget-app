@@ -81,23 +81,23 @@ export function ExpensesTable({
   const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
     try {
       const url = buildRedirectUrl(expense.id, field, index);
-      
+
       // Fetch the file as blob
       const response = await fetch(url);
       if (!response.ok) throw new Error('Download failed');
-      
+
       const blob = await response.blob();
-      
+
       // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = fileName || `${field}_${expense.id}_${index + 1}`;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
@@ -117,22 +117,19 @@ export function ExpensesTable({
   // Update expense status - server decides next status based on current status
   const updateExpenseStatus = async (expenseId: string, currentExpense: Expense) => {
     try {
-      // Send current status to server, server will decide the next status
-      const response = await expensesApi.patch(`/${expenseId}/status`, {
-        tatus: currentExpense.status
+      const res = await expensesApi.patch(`/${expenseId}/status`, {
+        status: currentExpense.status, // ← היה tatus
       });
+      const next =
+        res.data?.statusChange?.to ||
+        res.data?.data?.fields?.status ||
+        currentExpense.status;
 
-      // Update the UI with the status returned from server
-      if (response.data && onExpenseStatusUpdate) {
-        const updatedExpense = {
-          ...currentExpense,
-          status: response.data.status || response.data.new_status
-        };
-        onExpenseStatusUpdate(updatedExpense);
+      if (onExpenseStatusUpdate && next) {
+        onExpenseStatusUpdate({ ...currentExpense, status: next });
       }
-    } catch (error) {
-      console.error('Failed to update expense status:', error);
-      // Could add error handling here to revert the optimistic update
+    } catch (err) {
+      console.error('Failed to update expense status:', err);
     }
   };
 
@@ -182,46 +179,27 @@ export function ExpensesTable({
   const onRowClick = (expenseId: string) => {
     setExpandedRow(expandedRow === expenseId ? null : expenseId);
   };
+  const updatingUrgentIds = React.useRef<Set<string>>(new Set());
 
   const handleMarkUrgent = async (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
 
+    // מניעת לחיצה כפולה/מרוץ בקשות לאותו id
+    if (updatingUrgentIds.current.has(expense.id)) return;
+    updatingUrgentIds.current.add(expense.id);
+
+    const newPriority = expense.priority === 'urgent' ? 'normal' : 'urgent';
     try {
-      const newPriority = expense.priority === 'urgent' ? 'normal' : 'urgent';
-
-      if (isMockMode()) {
-        // Mock API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        // Update local state optimistically
-        setExpenses(prev => prev.map(exp =>
-          exp.id === expense.id
-            ? { ...exp, priority: newPriority }
-            : exp
-        ));
-
-        if (onUrgentToggle) {
-          onUrgentToggle({ ...expense, priority: newPriority });
-        }
+      if (!isMockMode()) {
+        await expensesApi.patch(`/${expense.id}`, { priority: newPriority });
       } else {
-        // Real API call
-        const response = await expensesApi.patch(`/${expense.id}`, {
-          priority: newPriority
-        });
-
-        // Update local state
-        setExpenses(prev => prev.map(exp =>
-          exp.id === expense.id
-            ? { ...exp, priority: newPriority }
-            : exp
-        ));
-
-        if (onUrgentToggle) {
-          onUrgentToggle(response.data);
-        }
+        await new Promise(r => setTimeout(r, 300));
       }
+      onUrgentToggle?.({ ...expense, priority: newPriority });
     } catch (err) {
       console.error('Error updating expense priority:', err);
+    } finally {
+      updatingUrgentIds.current.delete(expense.id);
     }
   };
 
@@ -465,18 +443,18 @@ export function ExpensesTable({
                       </div>
 
 
-                      {/* <button
+                      <button
                         onClick={(e) => onEdit(expense, e)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={(e) => onDelete(expense, e)}
+                        onClick={(e) => { e.stopPropagation(); onDelete(expense, e); }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button> */}
+                      </button>
 
                       <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                         {expandedRow === expense.id ?

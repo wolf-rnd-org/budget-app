@@ -281,7 +281,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       }
 
       // Real API call
-      const response = await budgetApi.patch(`/budget/expenses/${expenseId}`, updateData);
+      const response = await expensesApi.patch(`${expenseId}`, updateData);
       onSuccess(response.data);
       handleClose();
     } catch (err) {
@@ -330,7 +330,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <h2 className="text-2xl font-bold text-gray-900">עריכת הוצאה</h2>
@@ -343,14 +343,14 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">טוען נתוני הוצאה...</p>
             </div>
           ) : (
-            <div className="p-8">
+            <div className="p-8 pb-6">
               <div className="max-w-4xl mx-auto space-y-8">
                 {/* Basic Details Section */}
                 <div className="bg-gray-50 rounded-xl p-6">
@@ -458,14 +458,14 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                 </div>
 
                 {/* Categories Section */}
-                <div className="bg-gray-50 rounded-xl p-6">
+                {/* <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">קטגוריות *</h3>
 
                   <CategoriesField
                     selectedCategories={formData.categories}
                     onChange={(categories) => handleInputChange('categories', categories)}
                   />
-                </div>
+                </div> */}
 
                 {/* Files Section */}
                 {/* <div className="bg-gray-50 rounded-xl p-6">

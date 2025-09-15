@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import { BudgetSummaryCards, ProjectSelector, SearchFilters, ExpensesTable, AddExpenseWizard, EditExpenseModal } from './index';
 import { getProgramSummary } from '@/api/programs';
+import { expensesApi } from '@/api/http';
 
 export function RegularExpensesView() {
   const user = useAuthStore(s => s.user);
@@ -199,9 +200,19 @@ export function RegularExpensesView() {
     setShowEditExpense(true);
   };
 
-  const handleDelete = (expense: Expense, event: React.MouseEvent) => {
-    console.log('Delete expense:', expense.id);
-  };
+const handleDelete = async (expense: Expense, event: React.MouseEvent) => {
+  event.stopPropagation();
+  if (!confirm(`למחוק את ההוצאה של ${expense.supplier_name}?`)) return;
+
+  try {
+    await expensesApi.delete(`/${expense.id}`); // DELETE /expenses/:id
+    setExpenses(prev => prev.filter(x => x.id !== expense.id)); // עדכון UI
+  } catch (err) {
+    console.error('Delete failed', err);
+    alert('מחיקה נכשלה');
+  }
+};
+
 
   const handleUrgentToggle = (updatedExpense: Expense) => {
     // Update the expense in the local state
