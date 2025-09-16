@@ -81,30 +81,31 @@ export function ExpensesTable({
   const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
     try {
       const url = buildRedirectUrl(expense.id, field, index);
-      
+
       // Fetch the file as blob
       const response = await fetch(url);
       if (!response.ok) throw new Error('Download failed');
-      
+
       const blob = await response.blob();
-      
+
       // Create download link
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.href = downloadUrl;
       link.download = fileName || `${field}_${expense.id}_${index + 1}`;
-      
+
       // Trigger download
       document.body.appendChild(link);
       link.click();
-      
+
       // Cleanup
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
 
-      // Update expense status from 'new' to 'send_for_payment' after successful download
-      if (expense.status === 'new') {
-        await updateExpenseStatus(expense.id);
+      // Update expense status after successful download
+      // Only update status if onExpenseStatusUpdate callback is provided (admin view only)
+      if (onExpenseStatusUpdate) {
+        await updateExpenseStatus(expense.id, expense);
       }
     } catch (error) {
       console.error('Download failed:', error);
@@ -113,18 +114,22 @@ export function ExpensesTable({
     }
   };
 
-  // Update expense status to 'send_for_payment'
-  const updateExpenseStatus = async (expenseId: string) => {
+  // Update expense status - server decides next status based on current status
+  const updateExpenseStatus = async (expenseId: string, currentExpense: Expense) => {
     try {
-      const response = await expensesApi.patch(`/${expenseId}/status`, {
-        status: 'new'
+      const res = await expensesApi.patch(`/${expenseId}/status`, {
+        status: currentExpense.status, // ← היה tatus
       });
-      
-      if (response.data && onExpenseStatusUpdate) {
-        onExpenseStatusUpdate(response.data);
+      const next =
+        res.data?.statusChange?.to ||
+        res.data?.data?.fields?.status ||
+        currentExpense.status;
+
+      if (onExpenseStatusUpdate && next) {
+        onExpenseStatusUpdate({ ...currentExpense, status: next });
       }
-    } catch (error) {
-      console.error('Failed to update expense status:', error);
+    } catch (err) {
+      console.error('Failed to update expense status:', err);
     }
   };
 
@@ -174,46 +179,27 @@ export function ExpensesTable({
   const onRowClick = (expenseId: string) => {
     setExpandedRow(expandedRow === expenseId ? null : expenseId);
   };
+  const updatingUrgentIds = React.useRef<Set<string>>(new Set());
 
   const handleMarkUrgent = async (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
-    
+
+    // מניעת לחיצה כפולה/מרוץ בקשות לאותו id
+    if (updatingUrgentIds.current.has(expense.id)) return;
+    updatingUrgentIds.current.add(expense.id);
+
+    const newPriority = expense.priority === 'urgent' ? 'normal' : 'urgent';
     try {
-      const newPriority = expense.priority === 'urgent' ? 'normal' : 'urgent';
-      
-      if (isMockMode()) {
-        // Mock API call
-        await new Promise(resolve => setTimeout(resolve, 500));
-        
-        // Update local state optimistically
-        setExpenses(prev => prev.map(exp => 
-          exp.id === expense.id 
-            ? { ...exp, priority: newPriority }
-            : exp
-        ));
-        
-        if (onUrgentToggle) {
-          onUrgentToggle({ ...expense, priority: newPriority });
-        }
+      if (!isMockMode()) {
+        await expensesApi.patch(`/${expense.id}`, { priority: newPriority });
       } else {
-        // Real API call
-        const response = await expensesApi.patch(`/${expense.id}`, {
-          priority: newPriority
-        });
-        
-        // Update local state
-        setExpenses(prev => prev.map(exp => 
-          exp.id === expense.id 
-            ? { ...exp, priority: newPriority }
-            : exp
-        ));
-        
-        if (onUrgentToggle) {
-          onUrgentToggle(response.data);
-        }
+        await new Promise(r => setTimeout(r, 300));
       }
+      onUrgentToggle?.({ ...expense, priority: newPriority });
     } catch (err) {
       console.error('Error updating expense priority:', err);
+    } finally {
+      updatingUrgentIds.current.delete(expense.id);
     }
   };
 
@@ -221,8 +207,8 @@ export function ExpensesTable({
 
   React.useEffect(() => {
     const handleScroll = () => {
-      if (window.innerHeight + document.documentElement.scrollTop 
-          >= document.documentElement.offsetHeight - 1000) {
+      if (window.innerHeight + document.documentElement.scrollTop
+        >= document.documentElement.offsetHeight - 1000) {
         onLoadMore();
       }
     };
@@ -298,7 +284,7 @@ export function ExpensesTable({
     }
   };
 
-    const getStatusText = (status: string) => {
+  const getStatusText = (status: string) => {
     switch ((status || '').toLowerCase()) {
       case 'new':
         return 'חדש – ממתין להנה"ח';
@@ -390,13 +376,12 @@ export function ExpensesTable({
           <tbody className="divide-y divide-gray-100">
             {filteredExpenses.map((expense) => (
               <React.Fragment key={expense.id}>
-                <tr 
+                <tr
                   onClick={() => onRowClick(expense.id)}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
-                    expense.priority === 'urgent' 
-                      ? 'bg-red-50 border-l-4 border-red-500' 
-                      : ''
-                  }`}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${expense.priority === 'urgent'
+                    ? 'bg-red-50 border-l-4 border-red-500'
+                    : ''
+                    }`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
@@ -456,37 +441,37 @@ export function ExpensesTable({
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
                         </div> */}
                       </div>
-                      
-                      
-                      {/* <button
+
+
+                      <button
                         onClick={(e) => onEdit(expense, e)}
                         className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-all"
                       >
                         <Edit3 className="w-4 h-4" />
                       </button>
                       <button
-                        onClick={(e) => onDelete(expense, e)}
+                        onClick={(e) => { e.stopPropagation(); onDelete(expense, e); }}
                         className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
                       >
                         <Trash2 className="w-4 h-4" />
-                      </button> */}
-                      
+                      </button>
+
                       <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                        {expandedRow === expense.id ? 
-                          <ChevronUp className="w-4 h-4" /> : 
+                        {expandedRow === expense.id ?
+                          <ChevronUp className="w-4 h-4" /> :
                           <ChevronDown className="w-4 h-4" />
                         }
                       </button>
                     </div>
                   </td>
                 </tr>
-                
+
                 {/* Accordion Content */}
                 {expandedRow === expense.id && (
                   <tr>
                     <td colSpan={
-                      (showProgramColumn ? 1 : 0) + 
-                      (showDownloadColumn ? 1 : 0) + 
+                      (showProgramColumn ? 1 : 0) +
+                      (showDownloadColumn ? 1 : 0) +
                       5 // base columns: supplier, date, amount, status, actions
                     } className="px-6 py-0">
                       <div className="bg-gray-50 rounded-xl p-6 m-4 border border-gray-200">
@@ -494,7 +479,7 @@ export function ExpensesTable({
                           <h4 className="text-lg font-semibold text-gray-900 mb-1">פרטי הוצאה נוספים</h4>
                           <div className="w-12 h-0.5 bg-blue-500 rounded-full"></div>
                         </div>
-                        
+
                         <div className="bg-white rounded-lg p-6 shadow-sm">
                           {/* Basic Details Section */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
@@ -502,31 +487,31 @@ export function ExpensesTable({
                               <span className="text-sm font-medium text-gray-600">תיאור החשבונית</span>
                               <span className="text-sm text-gray-900 font-medium">{expense.invoice_description}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                               <span className="text-sm font-medium text-gray-600">חשבונית ע''ש</span>
                               <span className="text-sm text-gray-900 font-bold">{expense.budget}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                               <span className="text-sm font-medium text-gray-600">מספר עסק</span>
                               <span className="text-sm text-gray-900 font-mono">{expense.business_number}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                               <span className="text-sm font-medium text-gray-600">סוג חשבונית</span>
                               <span className="text-sm text-gray-900 font-medium">{expense.invoice_type}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                               <span className="text-sm font-medium text-gray-600">אימייל ספק</span>
                               <span className="text-sm text-gray-900 font-medium">{expense.supplier_email || 'לא צוין'}</span>
                             </div>
-                            
+
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
                               <span className="text-sm font-medium text-gray-600">קטגוריות</span>
                               <div className="flex flex-wrap gap-1">
-                                {Array.isArray(expense.categories) ? 
+                                {Array.isArray(expense.categories) ?
                                   expense.categories.map((cat, idx) => (
                                     <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
                                       {typeof cat === 'string' ? cat : (cat?.name ?? cat?.id ?? '—')}
@@ -539,7 +524,7 @@ export function ExpensesTable({
                               </div>
                             </div>
                           </div>
-                          
+
                           {/* Bank Details Section */}
                           <div className="pt-4 border-t border-gray-200">
                             <h5 className="text-sm font-semibold text-gray-700 mb-3">פרטי בנק</h5>
@@ -570,15 +555,15 @@ export function ExpensesTable({
                               <a
                                 href={Array.isArray(expense.invoice_file)
                                   ? (isMockMode()
-                                      ? (typeof (expense.invoice_file as any)[0] === 'string'
-                                          ? (expense.invoice_file as any)[0]
-                                          : ((expense.invoice_file as any)[0]?.url || ''))
-                                      : buildRedirectUrl(expense.id, 'invoice_file', 0))
+                                    ? (typeof (expense.invoice_file as any)[0] === 'string'
+                                      ? (expense.invoice_file as any)[0]
+                                      : ((expense.invoice_file as any)[0]?.url || ''))
+                                    : buildRedirectUrl(expense.id, 'invoice_file', 0))
                                   : (typeof expense.invoice_file === 'string'
-                                      ? expense.invoice_file
-                                      : ((expense.invoice_file as any)?.url || ''))}
-                                style={{ display: (normalizeFiles as any)(expense.invoice_file).length > 0 ? 'inline-flex' : 'none' }} 
-                                target="_blank" 
+                                    ? expense.invoice_file
+                                    : ((expense.invoice_file as any)?.url || ''))}
+                                style={{ display: (normalizeFiles as any)(expense.invoice_file).length > 0 ? 'inline-flex' : 'none' }}
+                                target="_blank"
                                 rel="noopener noreferrer"
                                 className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
                               >
@@ -587,19 +572,19 @@ export function ExpensesTable({
                                 </svg>
                                 חשבונית
                               </a>
-                              
+
                               {(normalizeFiles as any)(expense.bank_details_file).length > 0 && (
                                 <a
                                   href={Array.isArray(expense.bank_details_file)
                                     ? (isMockMode()
-                                        ? (typeof (expense.bank_details_file as any)[0] === 'string'
-                                            ? (expense.bank_details_file as any)[0]
-                                            : ((expense.bank_details_file as any)[0]?.url || ''))
-                                        : buildRedirectUrl(expense.id, 'bank_details_file', 0))
+                                      ? (typeof (expense.bank_details_file as any)[0] === 'string'
+                                        ? (expense.bank_details_file as any)[0]
+                                        : ((expense.bank_details_file as any)[0]?.url || ''))
+                                      : buildRedirectUrl(expense.id, 'bank_details_file', 0))
                                     : (typeof expense.bank_details_file === 'string'
-                                        ? expense.bank_details_file
-                                        : ((expense.bank_details_file as any)?.url || ''))} 
-                                  target="_blank" 
+                                      ? expense.bank_details_file
+                                      : ((expense.bank_details_file as any)?.url || ''))}
+                                  target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
@@ -620,7 +605,7 @@ export function ExpensesTable({
             ))}
           </tbody>
         </table>
-        
+
         {/* Loading More Indicator */}
         {loadingMore && (
           <div className="bg-white p-6 text-center border-t border-gray-100">

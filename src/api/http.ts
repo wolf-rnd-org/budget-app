@@ -25,7 +25,7 @@ export const budgetApi = axios.create({
 // Programs API instance
 export const programsApi = axios.create({
   baseURL: isMockMode()
-    ? 'mocks/programs'
+    ? '/mocks/programs'
     : `${import.meta.env.VITE_PROGRAMS_BASE_URL}`,
 });
 
@@ -62,4 +62,4 @@ function attach401Interceptor(instance: typeof authApi) {
   );
 }
 
-[authApi, budgetApi, programsApi].forEach(attach401Interceptor);
+[authApi, budgetApi, programsApi,expensesApi].forEach(attach401Interceptor);

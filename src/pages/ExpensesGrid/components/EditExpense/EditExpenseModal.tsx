@@ -152,7 +152,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
             : (typeof expenseData.categories === 'string' ? [expenseData.categories as string] : []);
           setFormData({
             budget: expenseData.budget,
-            program_id: expenseData.program_id, 
+            program_id: expenseData.program_id,
             project: expenseData.project || "",
             date: expenseData.date,
             categories: apiCats,
@@ -186,7 +186,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
   //   setPrograms(list);
   // }, [isOpen, storePrograms]);
 
-  
+
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
     setHasUnsavedChanges(true);
@@ -231,7 +231,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       setError('סכום חייב להיות חיובי');
       return false;
     }
- 
+
     if (!formData.date) {
       setError('תאריך הוא שדה חובה');
       return false;
@@ -240,13 +240,13 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       setError('כתובת אימייל לא תקינה');
       return false;
     }
-    
+
     if (formData.categories.length === 0) {
       setError('יש לבחור לפחות קטגוריה אחת');
       return false;
     }
     return true;
-  }; 
+  };
   React.useEffect(() => {
     // אפשר: איפוס מלא, או לסנן מול האופציות ב-CategoriesField
     if (formData.programId) {
@@ -281,7 +281,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       }
 
       // Real API call
-      const response = await budgetApi.patch(`/budget/expenses/${expenseId}`, updateData);
+      const response = await expensesApi.patch(`${expenseId}`, updateData);
       onSuccess(response.data);
       handleClose();
     } catch (err) {
@@ -330,7 +330,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-4xl max-h-[90vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-indigo-50">
           <h2 className="text-2xl font-bold text-gray-900">עריכת הוצאה</h2>
@@ -343,20 +343,20 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
         </div>
 
         {/* Content */}
-        <div className="overflow-y-auto max-h-[calc(90vh-140px)]">
+        <div className="flex-1 min-h-0 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
               <p className="text-gray-600">טוען נתוני הוצאה...</p>
             </div>
           ) : (
-            <div className="p-8">
+            <div className="p-8 pb-6">
               <div className="max-w-4xl mx-auto space-y-8">
                 {/* Basic Details Section */}
                 <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">פרטי הוצאה</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    
+
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">שם ספק *</label>
                       <input
@@ -388,12 +388,14 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                         required
                       >
                         <option value="">בחר סוג חשבונית</option>
+                        <option value="חשבונית עסקה">חשבונית עסקה</option>
                         <option value="חשבונית מס">חשבונית מס</option>
-                        <option value="חשבון עסקה">חשבון עסקה</option>
-                        <option value=">דרישת תשלום">דרישת תשלום</option>
+                        <option value="דרישת תשלום">דרישת תשלום</option>
+                        <option value="קבלה">קבלה</option>
+                        <option value="חשבונית זיכוי">חשבונית זיכוי</option>
                       </select>
                     </div>
-                    
+
 
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">סכום *</label>
@@ -428,7 +430,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                         required
                       />
                     </div>
-                  
+
 
                     <div className="md:col-span-2">
                       <label className="block text-sm font-medium text-gray-700 mb-2">תיאור החשבונית *</label>
@@ -451,27 +453,27 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                       />
                     </div>
 
-                    
+
                   </div>
                 </div>
 
                 {/* Categories Section */}
-                <div className="bg-gray-50 rounded-xl p-6">
+                {/* <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-4">קטגוריות *</h3>
-                  
+
                   <CategoriesField
                     selectedCategories={formData.categories}
                     onChange={(categories) => handleInputChange('categories', categories)}
                   />
-                </div>
+                </div> */}
 
                 {/* Files Section */}
                 {/* <div className="bg-gray-50 rounded-xl p-6">
                   <h3 className="text-lg font-semibold text-gray-900 mb-6">קבצים מצורפים</h3>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6"> */}
-                    {/* Invoice File */}
-                    {/* <div>
+                {/* Invoice File */}
+                {/* <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">חשבונית</label>
                       <div className="space-y-3">
                         {expense?.invoice_file && !newInvoiceFile && (
@@ -520,8 +522,8 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                       </div>
                     </div> */}
 
-                    {/* Bank Details File */}
-                    {/* <div>
+                {/* Bank Details File */}
+                {/* <div>
                       <label className="block text-sm font-medium text-gray-700 mb-3">פרטי בנק</label>
                       <div className="space-y-3">
                         {expense?.bank_details_file && !newBankFile && (

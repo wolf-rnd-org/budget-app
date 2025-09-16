@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import { BudgetSummaryCards, ProjectSelector, SearchFilters, ExpensesTable, AddExpenseWizard, EditExpenseModal } from './index';
 import { getProgramSummary } from '@/api/programs';
+import { expensesApi } from '@/api/http';
 
 export function RegularExpensesView() {
   const user = useAuthStore(s => s.user);
@@ -19,6 +20,7 @@ export function RegularExpensesView() {
   const [currentPage, setCurrentPage] = React.useState(1);
   const [hasMore, setHasMore] = React.useState(true);
   const pageSize = 20;
+  const loadingRef = React.useRef(false);
   
   // Budget summary state
   const [totalBudget, setTotalBudget] = React.useState(0);
@@ -98,24 +100,79 @@ export function RegularExpensesView() {
     fetchInitialExpenses();
   }, [user?.userId, currentProgramId]);
 
+  // Fetch expenses when search/filter parameters change
+  React.useEffect(() => {
+    if (!user?.userId || !currentProgramId) return;
+
+    const fetchFilteredExpenses = async () => {
+      try {
+        setLoading(true);
+        const result = await getExpenses({
+          user_id: canViewAllExpenses ? undefined : user.userId,
+          page: 1,
+          pageSize,
+          programId: currentProgramId,
+          searchText: searchText || undefined,
+          status: statusFilter || undefined,
+          priority: (priorityFilter as any) || undefined,
+          dateFrom: dateFrom || undefined,
+          dateTo: dateTo || undefined,
+          sort_by: sortBy,
+          sort_dir: sortDir,
+        });
+        setExpenses(result.data);
+        setHasMore(result.hasMore);
+        setCurrentPage(1);
+      } catch (err) {
+        setError('נכשל בטעינת ההוצאות');
+        console.error('Error fetching filtered expenses:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    // Debounce search to avoid too many requests - wait for user to finish typing
+    const timeoutId = setTimeout(() => {
+      fetchFilteredExpenses();
+    }, 800);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, currentProgramId, canViewAllExpenses]);
+
   const loadMoreExpenses = React.useCallback(async () => {
-    if (loadingMore || !hasMore || !user?.userId || !currentProgramId) return;
+    if (loadingMore || !hasMore || !user?.userId || !currentProgramId || loadingRef.current) return;
     
     try {
+      loadingRef.current = true;
       setLoadingMore(true);
       const nextPage = currentPage + 1;
       const result = await getExpenses({ 
         user_id: canViewAllExpenses ? undefined : user.userId, 
         page: nextPage, 
         pageSize,
-        programId: currentProgramId
+        programId: currentProgramId,
+        searchText: searchText || undefined,
+        status: statusFilter || undefined,
+        priority: (priorityFilter as any) || undefined,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
+        sort_by: sortBy,
+        sort_dir: sortDir,
       });
-      setExpenses(prev => [...prev, ...result.data]);
+      
+      // Check if we already have these expenses to prevent duplicates
+      setExpenses(prev => {
+        const existingIds = new Set(prev.map(exp => exp.id));
+        const newExpenses = result.data.filter(exp => !existingIds.has(exp.id));
+        return [...prev, ...newExpenses];
+      });
+      
       setHasMore(result.hasMore);
       setCurrentPage(nextPage);
     } catch (err) {
       console.error('Error loading more expenses:', err);
     } finally {
+      loadingRef.current = false;
       setLoadingMore(false);
     }
   }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, currentProgramId, canViewAllExpenses]);
@@ -143,9 +200,19 @@ export function RegularExpensesView() {
     setShowEditExpense(true);
   };
 
-  const handleDelete = (expense: Expense, event: React.MouseEvent) => {
-    console.log('Delete expense:', expense.id);
-  };
+const handleDelete = async (expense: Expense, event: React.MouseEvent) => {
+  event.stopPropagation();
+  if (!confirm(`למחוק את ההוצאה של ${expense.supplier_name}?`)) return;
+
+  try {
+    await expensesApi.delete(`/${expense.id}`); // DELETE /expenses/:id
+    setExpenses(prev => prev.filter(x => x.id !== expense.id)); // עדכון UI
+  } catch (err) {
+    console.error('Delete failed', err);
+    alert('מחיקה נכשלה');
+  }
+};
+
 
   const handleUrgentToggle = (updatedExpense: Expense) => {
     // Update the expense in the local state
@@ -235,6 +302,8 @@ export function RegularExpensesView() {
       ));
     }
   };
+
+
 
   // Show loading if no program selected
   if (user && !currentProgramId) {

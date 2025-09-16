@@ -97,4 +97,7 @@ export async function getExpenses(params: GetExpensesParams): Promise<{ data: Ex
   const { data, hasMore, totalCount } = response.data;
   return { data, hasMore, totalCount };
 }
+export async function deleteExpense(id: string) {
+  await expensesApi.delete(`/${id}`); // מצפה ל-204 No Content
+}
 

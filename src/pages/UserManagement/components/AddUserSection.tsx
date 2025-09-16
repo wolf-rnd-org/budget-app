@@ -56,7 +56,7 @@ export function AddUserSection() {
 
     try {
       setProgramsLoading(true);
-      
+
       if (isMockMode()) {
         // Mock programs data
         await new Promise(resolve => setTimeout(resolve, 500));
@@ -124,7 +124,7 @@ export function AddUserSection() {
       return false;
     }
     if (selectedPrograms.length === 0) {
-      setError('יש לבחור לפחות פרויקט אחד');
+      setError('שיוך פרויקטים נדרש - יש לבחור לפחות פרויקט אחד');
       return false;
     }
     return true;
@@ -151,21 +151,21 @@ export function AddUserSection() {
         role_label: selectedRole,
         password,
         application_name: 'BUDGETS',
-        
+
         // program_ids: selectedPrograms,
       };
 
       if (isMockMode()) {
         // Mock registration with server-generated password
         await new Promise(resolve => setTimeout(resolve, 1500));
-        
+
         const mockResponse = {
           success: true,
           message: 'משתמש נוצר בהצלחה',
           userId: `user_${Date.now()}`,
           password, // Use the generated password
         };
-        
+
         setNewUserId(mockResponse.userId);
         setGeneratedPassword(password);
         setShowPassword(true);
@@ -180,7 +180,7 @@ export function AddUserSection() {
           });
         }
         setNewUserId(createdUserId);
-        
+
         setGeneratedPassword(password);
         setShowPassword(true);
         setSuccess('משתמש נוצר בהצלחה! הסיסמה נוצרה על ידי המערכת.');
@@ -324,7 +324,7 @@ export function AddUserSection() {
           {/* Project Assignment */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-3">
-              שיוך פרויקטים * 
+              שיוך פרויקטים <span className="text-red-500">*</span>
             </label>
             {programsLoading ? (
               <div className="bg-gray-50 rounded-xl p-4 text-center">
@@ -332,37 +332,53 @@ export function AddUserSection() {
                 <p className="text-gray-600 text-sm">טוען פרויקטים...</p>
               </div>
             ) : (
-              <ProjectAssignmentDropdown
-                projects={programs}
-                selectedProjectIds={selectedPrograms}
-                onProjectToggle={handleProgramAdd}
-                onProjectRemove={handleProgramRemove}
-                disabled={loading}
-                placeholder="בחר פרויקטים"
-                className="max-w-md"
-              />
+              <>
+                <div className={`${selectedPrograms.length === 0 && error?.includes('שיוך פרויקטים') ? 'ring-2 ring-red-500 rounded-xl' : ''}`}>
+                  <ProjectAssignmentDropdown
+                    projects={programs}
+                    selectedProjectIds={selectedPrograms}
+                    onProjectToggle={handleProgramAdd}
+                    onProjectRemove={handleProgramRemove}
+                    disabled={loading}
+                    placeholder="בחר פרויקטים (נדרש)"
+                    className="max-w-md"
+                  />
+                </div>
+                {selectedPrograms.length === 0 && (
+                  <p className="text-sm text-gray-500 mt-2">
+                    יש לבחור לפחות פרויקט אחד כדי ליצור משתמש
+                  </p>
+                )}
+              </>
             )}
           </div>
 
           {/* Submit Button - Placed after project assignment */}
           <div className="flex justify-start">
-            <button
-              type="submit"
-              disabled={loading || programsLoading || selectedPrograms.length === 0}
-              className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 px-6 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
-            >
-              {loading ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  יוצר משתמש...
-                </>
-              ) : (
-                <>
-                  <UserPlus className="w-4 h-4" />
-                  צור משתמש
-                </>
+            <div className="flex flex-col">
+              <button
+                type="submit"
+                disabled={loading || programsLoading || selectedPrograms.length === 0}
+                className="bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white py-3 px-6 rounded-xl font-medium transition-all flex items-center justify-center gap-2"
+              >
+                {loading ? (
+                  <>
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                    יוצר משתמש...
+                  </>
+                ) : (
+                  <>
+                    <UserPlus className="w-4 h-4" />
+                    צור משתמש
+                  </>
+                )}
+              </button>
+              {selectedPrograms.length === 0 && !loading && (
+                <p className="text-xs text-gray-500 mt-2">
+                  יש לבחור פרויקטים כדי להפעיל את הכפתור
+                </p>
               )}
-            </button>
+            </div>
           </div>
         </form>
 
@@ -391,7 +407,7 @@ export function AddUserSection() {
                   <span className="text-green-800 mr-2 font-mono">{newUserId}</span>
                 </div>
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-green-700 mb-2">
                   סיסמה שנוצרה על ידי המערכת:
@@ -406,11 +422,10 @@ export function AddUserSection() {
                   <button
                     type="button"
                     onClick={() => copyToClipboard(generatedPassword)}
-                    className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${
-                      passwordCopied 
-                        ? 'bg-green-600 text-white' 
-                        : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
-                    }`}
+                    className={`inline-flex items-center gap-2 px-4 py-3 rounded-lg font-medium transition-all ${passwordCopied
+                      ? 'bg-green-600 text-white'
+                      : 'bg-gray-100 hover:bg-gray-200 text-gray-700'
+                      }`}
                   >
                     <Copy className="w-4 h-4" />
                     {passwordCopied ? 'הועתק!' : 'העתק'}
