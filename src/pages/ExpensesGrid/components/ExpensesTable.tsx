@@ -296,6 +296,8 @@ export function ExpensesTable({
         return 'הועלתה קבלה';
       case 'closed':
         return 'הסתיים';
+      case 'petty_cash':
+        return 'קופה קטנה';
       default:
         return status;
     }

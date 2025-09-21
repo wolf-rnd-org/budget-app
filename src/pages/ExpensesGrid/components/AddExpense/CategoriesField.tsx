@@ -48,7 +48,7 @@ export function CategoriesField({ selectedCategories, onChange, error }: Categor
   const updatePosition = React.useCallback(() => {
     if (!controlRef.current) return;
     const rect = controlRef.current.getBoundingClientRect();
-    setCoords({ top: rect.bottom + window.scrollY, left: rect.left + window.scrollX, width: rect.width });
+    setCoords({ top: rect.bottom, left: rect.left, width: rect.width });
   }, []);
 
   React.useEffect(() => {
