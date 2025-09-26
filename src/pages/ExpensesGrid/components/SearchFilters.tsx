@@ -52,6 +52,7 @@ export function SearchFilters({
           <option value="paid">שולם – ממתין לקבלה</option>
           <option value="receipt_uploaded">הועלתה קבלה</option>
           <option value="closed">הסתיים</option>
+          <option value="petty_cash">קופה קטנה</option>
         </select>
 
         <select
