@@ -24,7 +24,7 @@ export default function MoreActionsButton({ categories = [], onSubmit, buttonLab
     () => [
       { key: 'petty', label: 'קופה קטנה', onClick: () => setPettyOpen(true) },
       { key: 'salary', label: 'דיווח שכר', onClick: () => setSalaryOpen(true) },
-      { key: 'check', label: 'צ׳ק', onClick: () => setCheckOpen(true) },
+      // { key: 'check', label: 'צ׳ק', onClick: () => setCheckOpen(true) },
     ],
     []
   );
@@ -61,19 +61,29 @@ export default function MoreActionsButton({ categories = [], onSubmit, buttonLab
         open={pettyOpen}
         categories={categories}
         onClose={() => setPettyOpen(false)}
-        onSubmit={(p) => onSubmit(p)}
+        onSubmit={async (p) => {
+          try {
+            await onSubmit(p);   // חשוב: await כדי שהדיאלוג יחכה לתוצאה
+          } catch (e) {
+            throw e;             // חשוב: לא לבלוע — להחזיר לדיאלוג כדי שיציג באנר
+          }
+        }}
       />
       <SalaryDialog
         open={salaryOpen}
         categories={categories}
         onClose={() => setSalaryOpen(false)}
-        onSubmit={(p) => onSubmit(p)}
+        onSubmit={async (p) => {
+          try { await onSubmit(p); } catch (e) { throw e; }
+        }}
       />
       <CheckDialog
         open={checkOpen}
         categories={categories}
         onClose={() => setCheckOpen(false)}
-        onSubmit={(p) => onSubmit(p)}
+        onSubmit={async (p) => {
+          try { await onSubmit(p); } catch (e) { throw e; }
+        }}
       />
 
       <style>{`

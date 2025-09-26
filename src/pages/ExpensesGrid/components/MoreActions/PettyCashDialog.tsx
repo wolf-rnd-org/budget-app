@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { X } from 'lucide-react';
+import { X, AlertCircle } from 'lucide-react';
 import type { PettyCashPayload } from './types';
 import { CategoriesField } from '../AddExpense/CategoriesField';
 
@@ -18,7 +18,7 @@ export default function PettyCashDialog({ open, /*categories = [],*/ onClose, on
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
   const [touched, setTouched] = useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = useState(false);
-
+  const [submitError, setSubmitError] = useState<string | null>(null);
   // Derived validation (errors shown only after blur or submit)
   const amountNum = useMemo(() => Number(amount), [amount]);
   const amountInvalid = useMemo(() => (!amount || Number.isNaN(amountNum) || amountNum <= 0), [amount, amountNum]);
@@ -33,15 +33,22 @@ export default function PettyCashDialog({ open, /*categories = [],*/ onClose, on
     setAmount('');
     setName('');
     setCategoryIds([]);
+    setTouched({});
+    setAttemptedSubmit(false);
+    setSubmitError(null);
   };
 
   const handleClose = () => {
-    if (!submitting) onClose();
+    if (!submitting) {
+      setSubmitError(null);
+      onClose();
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setAttemptedSubmit(true);
+    setSubmitError(null); 
     if (amountInvalid || nameInvalid || categoryInvalid) return;
     const payload: PettyCashPayload = {
       type: 'petty_cash',
@@ -54,8 +61,11 @@ export default function PettyCashDialog({ open, /*categories = [],*/ onClose, on
       await onSubmit(payload);
       reset();
       onClose();
-    } finally {
-      setSubmitting(false);
+      } catch (err) {
+      // אל תיסגר – הצג באנר שגיאה יפה והישאר בדיאלוג
+      setSubmitError('שמירה נכשלה. נסו שוב.');
+      console.error('Petty cash save failed:', err);
+    } finally {setSubmitting(false);
     }
   };
 
@@ -73,6 +83,28 @@ export default function PettyCashDialog({ open, /*categories = [],*/ onClose, on
 
         <div className="overflow-y-auto max-h-[calc(90vh-80px)] overscroll-contain">
           <form onSubmit={handleSubmit} className="p-6 grid grid-cols-1 gap-4">
+            
+            {/* באנר שגיאת שמירה */}
+            {submitError && (
+              <div
+                role="alert"
+                aria-live="assertive"
+                className="flex items-start gap-3 p-4 rounded-xl border border-red-200 bg-red-50"
+              >
+                <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
+                <div className="text-sm leading-6">
+                  <div className="font-semibold text-red-800">{submitError}</div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setSubmitError(null)}
+                  className="ms-auto text-red-700 hover:text-red-900 underline underline-offset-2"
+                  aria-label="הסתר שגיאה"
+                >
+                  הבנתי
+                </button>
+              </div>
+            )}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">סכום <span className="text-red-500">*</span></label>
               <input

@@ -14,7 +14,7 @@ export type PettyCashPayload = BaseExpensePayload & {
 export type SalaryPayload = BaseExpensePayload & {
   type: 'salary';
   payee: string;
-  isGross: boolean; // true => gross, false => net
+  is_gross: boolean; // true => gross, false => net
   rate: Money;
   quantity: number; // default 1
   amount: Money; // can be overridden, defaults to rate * quantity

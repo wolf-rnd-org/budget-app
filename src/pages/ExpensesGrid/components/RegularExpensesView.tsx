@@ -7,7 +7,8 @@ import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import { BudgetSummaryCards, ProjectSelector, SearchFilters, ExpensesTable, AddExpenseWizard, EditExpenseModal } from './index';
 import { MoreActionsButton, type MoreActionsPayload, type CategoryOption } from './MoreActions';
-// import EditPettyCashDialog from './MoreActions/EditPettyCashDialog';
+import EditSalaryDialog from './MoreActions/EditSalaryDialog';
+import EditPettyCashDialog from './MoreActions/EditPettyCashDialog';
 import { useCategoriesStore } from '@/stores/categoriesStore';
 import { isMockMode } from '@/api/http';
 // (removed duplicate imports)
@@ -44,6 +45,7 @@ export function RegularExpensesView() {
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const [showAddExpense, setShowAddExpense] = React.useState(false);
   const [showEditExpense, setShowEditExpense] = React.useState(false);
+  const [showEditSalary, setShowEditSalary] = React.useState(false);
   const [showEditPettyCash, setShowEditPettyCash] = React.useState(false);
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
   const [editingExpenseData, setEditingExpenseData] = React.useState<Expense | null>(null);
@@ -217,14 +219,44 @@ export function RegularExpensesView() {
     event.stopPropagation();
     setEditingExpenseId(expense.id);
     setEditingExpenseData(expense);
-    const rawType = (expense as any).invoice_type ?? (expense as any).expense_type ?? '';
-    const normalizedType = String(rawType).toLowerCase();
-    const isPettyCash = normalizedType === 'petty_cash' || rawType === 'קופה קטנה';
+    const candidates = [
+      (expense as any).invoice_type,
+      (expense as any).expense_type,
+      (expense as any).type,
+      (expense as any).status,
+    ].filter(Boolean).map(v => String(v).toLowerCase());
+    const isPettyCash =
+      candidates.some(t => ['petty_cash', 'petty-cash', 'petty cash'].includes(t)) ||
+      ((expense as any).invoice_type === 'קופה קטנה' ||
+        (expense as any).expense_type === 'קופה קטנה');
+
+    const isSalary =
+      candidates.some(t => ['salary', 'salary_report', 'salary-report', 'salary report'].includes(t)) ||
+      ((expense as any).invoice_type === 'דיווח שכר' ||
+        (expense as any).expense_type === 'דיווח שכר');
+
     if (isPettyCash) {
       setShowEditExpense(false);
+      setShowEditSalary(false);
       setShowEditPettyCash(true);
+
+    } else if (isSalary) {
+      setShowEditExpense(false);
+      setShowEditPettyCash(false);
+      (async () => {
+        try {
+          const { data } = await expensesApi.get(`/${expense.id}`);
+          setEditingExpenseData(data?.fields ? { id: data.id, ...data.fields } : data);
+        } catch (e) {
+          console.error('Failed to load full salary expense', e);
+          // אם נכשל—נמשיך עם ה־summary הקיים
+        } finally {
+          setShowEditSalary(true);
+        }
+      })();
     } else {
       setShowEditPettyCash(false);
+      setShowEditSalary(false);
       setShowEditExpense(true);
     }
   };
@@ -258,6 +290,34 @@ export function RegularExpensesView() {
     setShowAddExpense(true);
   };
 
+  const fallbackMoreActionsError = 'שמירה נכשלה. נסו שוב.';
+
+  const resolveMoreActionsErrorMessage = (err: unknown): string => {
+    if (err && typeof err === 'object') {
+      const response = (err as any).response;
+      const data = response?.data;
+      if (typeof data === 'string' && data.trim()) {
+        return data.trim();
+      }
+      if (data && typeof data.message === 'string' && data.message.trim()) {
+        return data.message.trim();
+      }
+      if (data && typeof data.error === 'string' && data.error.trim()) {
+        return data.error.trim();
+      }
+      const errorMessage = (err as any).message;
+      if (typeof errorMessage === 'string' && errorMessage.trim()) {
+        return errorMessage.trim();
+      }
+    }
+    if (typeof err === 'string' && err.trim()) {
+      return err.trim();
+    }
+    if (err instanceof Error && err.message) {
+      return err.message;
+    }
+    return fallbackMoreActionsError;
+  };
   const handleMoreActionsSubmit = async (p: MoreActionsPayload) => {
     if (!currentProgramId || !user?.userId) return;
 
@@ -291,11 +351,17 @@ export function RegularExpensesView() {
       case 'salary':
         body = {
           ...base,
+          program_id: String(currentProgramId),
+          user_id: String(user?.userId),
           supplier_name: p.payee,
-          invoice_type: 'salary',
-          invoice_description: `Salary ${p.isGross ? '(gross)' : '(net)'}: ${p.quantity} × ${p.rate}`,
-          amount: p.amount,
-          meta: { isGross: p.isGross, rate: p.rate, quantity: p.quantity },
+          expense_type: 'דיווח שכר',
+          quantity: Number(p.quantity),
+          rate: Number(p.rate),
+          amount: Number(p.amount),            // ?????? ???????? ????????
+          meta: { is_gross: p.is_gross, rate: p.rate, quantity: p.quantity },
+          categoryIds: Array.isArray((p as any).categoryIds) ? (p as any).categoryIds.map(String) : [],
+          idNumber: (p as any).idNumber || '', // ?? ??
+          month: (p as any).month || undefined // 'YYYY-MM' ?? ??
         };
         break;
       case 'check':
@@ -320,8 +386,9 @@ export function RegularExpensesView() {
       await expensesApi.post('/', body, { headers: { 'Content-Type': 'application/json' } });
       // Reuse refresh logic
       await handleExpenseCreated(body as Expense);
-    } catch (e) {
-      console.error('MoreActions submit failed', e);
+    } catch (error) {
+      console.error('MoreActions submit failed', error);
+      throw new Error(resolveMoreActionsErrorMessage(error))
     }
   };
 
@@ -364,6 +431,7 @@ export function RegularExpensesView() {
   const handleExpenseUpdated = async (updatedExpense: Expense) => {
     setShowEditExpense(false);
     setShowEditPettyCash(false);
+    setShowEditSalary(false);
     setEditingExpenseId(null);
     setEditingExpenseData(null);
 
@@ -523,7 +591,21 @@ export function RegularExpensesView() {
             onSuccess={handleExpenseUpdated}
           />
         )}
-        {/* {editingExpenseId && showEditPettyCash && (
+
+        {editingExpenseId && showEditSalary && (
+          <EditSalaryDialog
+            open={showEditSalary}
+            expense={editingExpenseData}
+            categories={categoryItems}
+            onClose={() => {
+              setShowEditSalary(false);
+              setEditingExpenseId(null);
+              setEditingExpenseData(null);
+            }}
+            onSuccess={handleExpenseUpdated}
+          />
+        )}
+        {editingExpenseId && showEditPettyCash && (
           <EditPettyCashDialog
             open={showEditPettyCash}
             expense={editingExpenseData}
@@ -535,7 +617,7 @@ export function RegularExpensesView() {
             }}
             onSuccess={handleExpenseUpdated}
           />
-        )} */}
+        )}
       </div>
     </div>
   );

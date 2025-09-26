@@ -1,3 +1,4 @@
+export type GrossNet = 'gross' | 'net';
 export type AuthUser = {
   userId: number;
   email: string;
@@ -36,6 +37,12 @@ export type Expense = {
   status: string;
   user_id: number | string;
   priority?: string;
+  id_number?: string;      
+  month?: string;          
+is_gross?: GrossNet | boolean;
+  rate?: number;          
+  quantity?: number;        
+  employer_cost?: number;   // עלות מעביד (חישוב שרת)
 };
 
 export interface LoginCredentials {
