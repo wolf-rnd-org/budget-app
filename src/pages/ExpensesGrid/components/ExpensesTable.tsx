@@ -3,8 +3,7 @@ import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download 
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
-import { getExpenses } from '@/api/expenses';
-import { budgetApi, expensesApi, isMockMode } from '@/api/http';
+import { expensesApi, isMockMode } from '@/api/http';
 
 interface ExpensesTableProps {
   onEdit: (expense: Expense, event: React.MouseEvent) => void;
@@ -46,6 +45,7 @@ export function ExpensesTable({
   sortDir,
   onSortChange,
   programId,
+
   expenses,
   loading,
   loadingMore,
@@ -296,6 +296,10 @@ export function ExpensesTable({
         return 'הועלתה קבלה';
       case 'closed':
         return 'הסתיים';
+      case 'petty_cash':
+        return 'קופה קטנה';
+      case 'salary':
+        return 'דיווח שכר';
       default:
         return status;
     }
