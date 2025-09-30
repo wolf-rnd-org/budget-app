@@ -9,6 +9,21 @@ type Props = {
   onClose: () => void;
   onSubmit: (payload: SalaryPayload) => Promise<void> | void;
 };
+function onlyDigits(s: string) {
+  return s.replace(/\D/g, '');
+}
+
+function isValidIsraeliId(raw: string): boolean {
+  const id = onlyDigits(raw);
+  if (id.length < 5 || id.length > 9) return false;
+  const padded = id.padStart(9, '0');
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    const num = Number(padded[i]) * (i % 2 === 0 ? 1 : 2);
+    sum += num > 9 ? num - 9 : num;
+  }
+  return sum % 10 === 0;
+}
 
 export default function SalaryDialog({ open, categories = [], onClose, onSubmit }: Props) {
   const [payee, setPayee] = useState('');
@@ -33,21 +48,48 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
   //   if (!autoAmount) return 0;
   //   return isGross ? autoAmount * 1.151 : (autoAmount / 0.8783) * 1.151;
   // }, [autoAmount, isGross]);
+  const idDigits = useMemo(() => onlyDigits(idNumber), [idNumber]);
+  const idStatus: 'empty' | 'short' | 'invalid' | 'valid' = useMemo(() => {
+    if (idDigits.length === 0) return 'empty';
+    if (idDigits.length < 9) return 'short';
+    return isValidIsraeliId(idDigits) ? 'valid' : 'invalid';
+  }, [idDigits]);
+
+
 
   const computeErrors = (): Record<string, string> => {
     const next: Record<string, string> = {};
     if (!payee.trim()) next.payee = 'חובה להזין שם מקבל התשלום';
-    if (!idNumber.trim()) next.idNumber = 'חובה להזין תעודת זהות';
+    const id = onlyDigits(idNumber);
+    if (!id) {
+      next.idNumber = 'חובה להזין תעודת זהות';
+    } else if (id.length !== 9) {
+      next.idNumber = 'תעודת זהות חייבת להיות בדיוק 9 ספרות';
+    } else if (!isValidIsraeliId(id)) {
+      next.idNumber = 'תעודת זהות לא תקינה';
+    }
+
     if (!month.trim()) next.month = 'חובה לבחור חודש דיווח';
-    const r = Number(rate); if (!rate || !Number.isFinite(r) || r <= 0) next.rate = 'תעריף חייב להיות גדול מ-0';
-    const q = Number(quantity); if (!quantity || !Number.isFinite(q) || q <= 0) next.quantity = 'כמות חייבת להיות גדולה מ-0';
+
+    const r = Number(rate);
+    if (!rate || !Number.isFinite(r) || r <= 0) next.rate = 'תעריף חייב להיות גדול מ-0';
+
+    const q = Number(quantity);
+    if (!quantity || !Number.isFinite(q) || q <= 0) next.quantity = 'כמות חייבת להיות גדולה מ-0';
+
     if (categoryIds.length === 0) next.categoryIds = 'יש לבחור לפחות קטגוריה אחת';
+
     return next;
   };
 
   const canSubmit = useMemo(() => {
-    return !submitting && Object.keys(computeErrors()).length === 0 && autoAmount > 0;
-  }, [submitting, payee, idNumber, month, rate, quantity, categoryIds, autoAmount]);
+    return (
+      !submitting &&
+      idStatus === 'valid' &&
+      Object.keys(computeErrors()).length === 0 &&
+      autoAmount > 0
+    );
+  }, [submitting, idStatus, payee, idNumber, month, rate, quantity, categoryIds, autoAmount]);
 
   const reset = () => {
     setPayee(''); setIdNumber(''); setMonth(''); setIsGross(false);
@@ -165,16 +207,52 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
 
             {/* ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">תעודת זהות <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                תעודת זהות <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 inputMode="numeric"
                 value={idNumber}
-                onChange={(e) => { setIdNumber(e.target.value); if (attemptedSubmit) validate(); }}
+                onChange={(e) => {
+                  const digits = onlyDigits(e.target.value).slice(0, 9);
+                  setIdNumber(digits);
+                  if (attemptedSubmit) validate();
+                }}
+                onKeyDown={(e) => {
+                  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter'];
+                  if (allowed.includes(e.key) || (e.ctrlKey || e.metaKey)) return;
+                  if (!/^\d$/.test(e.key)) e.preventDefault();
+                }}
                 required
-                aria-invalid={!!errors.idNumber}
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${attemptedSubmit && errors.idNumber ? 'border-red-500' : 'border-gray-300'}`}
+                maxLength={9}
+                dir="ltr"
+                placeholder="#########"
+                aria-invalid={idStatus === 'invalid'}
+                aria-describedby="idNumberHelp"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${(attemptedSubmit && (errors.idNumber || idStatus !== 'valid')) || idStatus === 'invalid'
+                    ? 'border-red-500'
+                    : 'border-gray-300'
+                  }`}
               />
+
+              {/* הערת עזרה חיה */}
+              <div id="idNumberHelp" aria-live="polite" className="mt-1 text-xs">
+                {idStatus === 'empty' && (
+                  <span className="text-gray-500">הקלידי 9 ספרות ללא רווחים או מקפים.</span>
+                )}
+                {idStatus === 'short' && (
+                  <span className="text-gray-500">חסרות עוד {9 - idDigits.length} ספרות.</span>
+                )}
+                {idStatus === 'invalid' && idDigits.length === 9 && (
+                  <span className="text-red-600">תעודת זהות לא תקינה.</span>
+                )}
+                {idStatus === 'valid' && (
+                  <span className="text-green-600">תעודת זהות תקינה ✓</span>
+                )}
+              </div>
+
+              {/* שגיאת submit (אם נשארת מהמנגנון הקיים) */}
               {errors.idNumber && <p className="text-xs text-red-600 mt-1">{errors.idNumber}</p>}
             </div>
 
