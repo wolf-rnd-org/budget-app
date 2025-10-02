@@ -12,7 +12,14 @@ type EditSalaryDialogProps = {
     onClose: () => void;
     onSuccess: (updated: Expense) => void;
 };
+const EMPLOYER_COST_MULTIPLIER = 1.151; // עלות מעביד יחסית לברוטו
+const NET_TO_GROSS_FACTOR = 0.8783;     // נטו ≈ 87.83% מהברוטו
 
+function computeEmployerCost(amount: number, isGross: boolean): number {
+    if (!Number.isFinite(amount) || amount <= 0) return 0;
+    const gross = isGross ? amount : amount / NET_TO_GROSS_FACTOR;
+    return +(gross * EMPLOYER_COST_MULTIPLIER).toFixed(2);
+}
 /** מזהה קטגוריות כ-array של מחרוזות מכל פורמט אפשרי */
 const normalizeCategoryIds = (expense: Expense | null): string[] => {
     if (!expense) return [];
@@ -81,7 +88,9 @@ export default function EditSalaryDialog({
         if (!Number.isFinite(qtyNum) || qtyNum <= 0) return 0;
         return +(rateNum * qtyNum).toFixed(2);
     }, [rateNum, qtyNum]);
-
+    const employerCost = React.useMemo(() => {
+        return computeEmployerCost(autoAmount, isGross);
+    }, [autoAmount, isGross]);
     const errors = React.useMemo(() => {
         const e: Record<string, string> = {};
         if (!payee.trim()) e.payee = 'חובה להזין שם מקבל התשלום';
@@ -359,25 +368,37 @@ export default function EditSalaryDialog({
                     </div>
 
                     {/* Summary */}
+                    {/* Summary */}
                     <div className="rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2">
-                        <div className="flex flex-wrap items-center gap-2 md:gap-3 text-gray-600 text-sm" dir="rtl">
-                            <span className="inline-flex items-center gap-1.5">
+                        <div className="flex flex-col gap-2 text-gray-600 text-sm" dir="rtl">
+                            {/* שורה 1: סכום + חישוב לפי */}
+                            <div className="flex flex-wrap items-center gap-2">
                                 <span className="font-medium text-gray-700">סכום:</span>
                                 <span className="tabular-nums">{autoAmount ? autoAmount.toFixed(2) : '-'}</span>
-                            </span>
-
-                            <span className="inline-flex items-center gap-1.5 md:pl-3 md:border-r md:border-gray-200">
-                                <span className="text-xs text-gray-500">חישוב לפי</span>
-                                <span className="h-1 w-1 rounded-full bg-gray-300" />
-                                <span className="tabular-nums">
-                                    {Number(rate) > 0 && Number(quantity) > 0
-                                        ? `${Number(rate).toFixed(2)} × ${Number(quantity)}`
-                                        : 'תעריף וכמות'}
+                                {/* <span className="text-xs text-gray-500">({isGross ? 'ברוטו' : 'נטו'})</span> */}
+                                <span className="inline-flex items-center gap-1.5 md:pl-3 md:border-r md:border-gray-200">
+                                    <span className="text-xs text-gray-500">חישוב לפי</span>
+                                    <span className="h-1 w-1 rounded-full bg-gray-300" />
+                                    <span className="tabular-nums">
+                                        {Number(rate) > 0 && Number(quantity) > 0
+                                            ? `${Number(rate).toFixed(2)} × ${Number(quantity)}`
+                                            : 'תעריף וכמות'}
+                                    </span>
                                 </span>
-                            </span>
+                            </div>
+                            {/* שורה 2: ירד מהתקציב */}
+                            <div className="flex items-center gap-2">
+                                <span className="font-medium text-gray-700">ירד מהתקציב (עלות מעביד):</span>
+                                <span className="tabular-nums">{employerCost ? employerCost.toFixed(2) : '-'}</span>
+                            </div>
                         </div>
-                    </div>
-                </form>
+                        {/* נוסחה קצרה להסבר (אופציונלי) */}
+                        <div className="mt-1 text-xs text-gray-500">
+                            {isGross
+                                ? `ברוטו × ${EMPLOYER_COST_MULTIPLIER}`
+                                : `נטו ÷ ${NET_TO_GROSS_FACTOR} × ${EMPLOYER_COST_MULTIPLIER}`}
+                        </div>
+                    </div>                </form>
 
                 {/* Footer */}
                 <div className="sticky bottom-0 bg-white/90 backdrop-blur border-t px-6 py-4 flex items-center justify-end gap-3">

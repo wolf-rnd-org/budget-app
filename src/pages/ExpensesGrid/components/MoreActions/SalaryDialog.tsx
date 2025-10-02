@@ -13,6 +13,14 @@ function onlyDigits(s: string) {
   return s.replace(/\D/g, '');
 }
 
+const EMPLOYER_COST_MULTIPLIER = 1.151; // עלות מעביד יחסית לברוטו
+const NET_TO_GROSS_FACTOR = 0.8783;     // נטו ≈ 87.83% מהברוטו
+
+function computeEmployerCost(amount: number, isGross: boolean): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const gross = isGross ? amount : amount / NET_TO_GROSS_FACTOR;
+  return +(gross * EMPLOYER_COST_MULTIPLIER).toFixed(2);
+}
 function isValidIsraeliId(raw: string): boolean {
   const id = onlyDigits(raw);
   if (id.length < 5 || id.length > 9) return false;
@@ -43,6 +51,9 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
     if (!Number.isFinite(r) || r <= 0 || !Number.isFinite(q) || q <= 0) return 0;
     return +(r * q).toFixed(2);
   }, [rate, quantity]);
+  const employerCost = useMemo(() => {
+    return computeEmployerCost(autoAmount, isGross);
+  }, [autoAmount, isGross]);
 
   // const previewEmployerCost = useMemo(() => {
   //   if (!autoAmount) return 0;
@@ -231,8 +242,8 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
                 aria-invalid={idStatus === 'invalid'}
                 aria-describedby="idNumberHelp"
                 className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${(attemptedSubmit && (errors.idNumber || idStatus !== 'valid')) || idStatus === 'invalid'
-                    ? 'border-red-500'
-                    : 'border-gray-300'
+                  ? 'border-red-500'
+                  : 'border-gray-300'
                   }`}
               />
 
@@ -340,25 +351,37 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
           </div>
           {/* Summary card */}
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2">
-            <div className="flex flex-wrap items-center gap-2 md:gap-3 text-gray-600 text-sm" dir="rtl">
-              <span className="inline-flex items-center gap-1.5">
-                {/* <span className="text-xs text-gray-500">תצוגה מקדימה</span> */}
-                {/* <span className="h-1 w-1 rounded-full bg-gray-300" /> */}
+            <div className="flex flex-col gap-2 text-gray-600 text-sm" dir="rtl">
+              {/* שורה 1: סכום + חישוב לפי */}
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-gray-700">סכום:</span>
                 <span className="tabular-nums">{autoAmount ? autoAmount.toFixed(2) : '-'}</span>
-              </span>
+                {/* <span className="text-xs text-gray-500">({isGross ? 'ברוטו' : 'נטו'})</span> */}
 
-              <span className="inline-flex items-center gap-1.5 md:pl-3 md:border-r md:border-gray-200">
-                <span className="text-xs text-gray-500">חישוב לפי</span>
-                <span className="h-1 w-1 rounded-full bg-gray-300" />
-                <span className="tabular-nums">
-                  {Number(rate) > 0 && Number(quantity) > 0
-                    ? `${Number(rate).toFixed(2)} × ${Number(quantity)}`
-                    : 'תעריף וכמות'}
+                <span className="inline-flex items-center gap-1.5 md:pl-3 md:border-r md:border-gray-200">
+                  <span className="text-xs text-gray-500">חישוב לפי</span>
+                  <span className="h-1 w-1 rounded-full bg-gray-300" />
+                  <span className="tabular-nums">
+                    {Number(rate) > 0 && Number(quantity) > 0
+                      ? `${Number(rate).toFixed(2)} × ${Number(quantity)}`
+                      : 'תעריף וכמות'}
+                  </span>
                 </span>
-              </span>
+              </div>
+
+              {/* שורה 2: ירד מהתקציב */}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-700">ירד מהתקציב (עלות מעביד):</span>
+                <span className="tabular-nums">{employerCost ? employerCost.toFixed(2) : '-'}</span>
+              </div>
             </div>
 
+            {/* נוסחה */}
+            <div className="mt-1 text-xs text-gray-500">
+              {isGross
+                ? `ברוטו × ${EMPLOYER_COST_MULTIPLIER}`
+                : `נטו ÷ ${NET_TO_GROSS_FACTOR} × ${EMPLOYER_COST_MULTIPLIER}`}
+            </div>
           </div>
         </form>
 
@@ -395,7 +418,7 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }
