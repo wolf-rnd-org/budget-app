@@ -3,6 +3,7 @@ import { X } from 'lucide-react';
 import { expensesApi, isMockMode } from '@/api/http';
 import type { Expense } from '@/api/types';
 import type { CategoryOption } from './types';
+import { CategoriesField } from '../AddExpense/CategoriesField';
 
 type EditPettyCashDialogProps = {
   open: boolean;
@@ -12,24 +13,26 @@ type EditPettyCashDialogProps = {
   onSuccess: (updatedExpense: Expense) => void;
 };
 
-const normalizeCategoryId = (expense: Expense | null): string => {
-  if (!expense) return '';
-  const cats = expense.categories as any;
-  if (!cats) return '';
+const normalizeCategoryIds = (expense: Expense | null): string[] => {
+  if (!expense) return [];
+  const cats = (expense as any).categories;
+  if (!cats) return [];
   if (Array.isArray(cats)) {
-    if (cats.length === 0) return '';
-    const first = cats[0];
-    if (typeof first === 'string') return String(first);
-    return String(first?.id ?? first?.recId ?? first?.recordId ?? first?.value ?? '');
+    return cats
+      .map((c) => typeof c === 'string'
+        ? String(c)
+        : String(c?.id ?? c?.recId ?? c?.recordId ?? c?.value ?? '')
+      )
+      .filter(Boolean);
   }
-  if (typeof cats === 'string') return String(cats);
-  return '';
+  if (typeof cats === 'string') return [cats];
+  return [];
 };
 
 export default function EditPettyCashDialog({ open, expense, categories = [], onClose, onSuccess }: EditPettyCashDialogProps) {
   const [amount, setAmount] = React.useState<string>('');
   const [name, setName] = React.useState<string>('');
-  const [categoryId, setCategoryId] = React.useState<string>('');
+  const [categoryIds, setCategoryIds] = React.useState<string[]>([]);
   const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
   const [touched, setTouched] = React.useState<Record<string, boolean>>({});
   const [submitting, setSubmitting] = React.useState(false);
@@ -38,39 +41,26 @@ export default function EditPettyCashDialog({ open, expense, categories = [], on
   const amountNum = React.useMemo(() => Number(amount), [amount]);
   const amountInvalid = React.useMemo(() => (!amount || Number.isNaN(amountNum) || amountNum <= 0), [amount, amountNum]);
   const nameInvalid = React.useMemo(() => name.trim().length === 0, [name]);
-  const categoryInvalid = React.useMemo(() => !categoryId, [categoryId]);
+  const catsInvalid = React.useMemo(() => categoryIds.length === 0, [categoryIds]);
 
   const canSubmit = React.useMemo(() => {
-    return !submitting && !amountInvalid && !nameInvalid && !categoryInvalid;
-  }, [submitting, amountInvalid, nameInvalid, categoryInvalid]);
+    return !submitting && !amountInvalid && !nameInvalid && !catsInvalid;
+  }, [submitting, amountInvalid, nameInvalid, catsInvalid]);
 
-  const fallbackCategoryLabel = React.useMemo(() => {
-    if (!expense) return '';
-    const cats = expense.categories as any;
-    if (!cats) return '';
-    if (Array.isArray(cats)) {
-      if (cats.length === 0) return '';
-      const first = cats[0];
-      if (typeof first === 'string') return String(first);
-      return String(first?.name ?? first?.title ?? first?.label ?? first?.value ?? categoryId);
-    }
-    if (typeof cats === 'string') return String(cats);
-    return '';
-  }, [expense, categoryId]);
 
   React.useEffect(() => {
     if (!open) return;
     if (!expense) {
       setAmount('');
       setName('');
-      setCategoryId('');
+      setCategoryIds([]);
       return;
     }
 
     setAmount(expense.amount != null ? String(expense.amount) : '');
     const preferredName = expense.invoice_description || expense.supplier_name || '';
     setName(preferredName);
-    setCategoryId(normalizeCategoryId(expense));
+    setCategoryIds(normalizeCategoryIds(expense));
     setAttemptedSubmit(false);
     setTouched({});
     setServerError(null);
@@ -84,9 +74,9 @@ export default function EditPettyCashDialog({ open, expense, categories = [], on
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setAttemptedSubmit(true);
-    if (amountInvalid || nameInvalid || categoryInvalid || !expense) return;
+ if (amountInvalid || nameInvalid || catsInvalid || !expense) return;
 
-    try {
+ try {
       setSubmitting(true);
       setServerError(null);
 
@@ -94,7 +84,7 @@ export default function EditPettyCashDialog({ open, expense, categories = [], on
         supplier_name: name.trim(),
         invoice_description: name.trim(),
         amount: Number(amount),
-        categories: categoryId ? [String(categoryId)] : [],
+        categories: categoryIds.map(String),
         status: expense.status,
         program_id: expense.program_id,
         date: expense.date,
@@ -124,7 +114,6 @@ export default function EditPettyCashDialog({ open, expense, categories = [], on
 
   if (!open || !expense) return null;
 
-  const missingOption = categoryId && !categories.some((cat) => String(cat.id) === String(categoryId));
 
   return (
     <div role="dialog" aria-modal="true" className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4 overscroll-contain" dir="rtl">
@@ -173,27 +162,17 @@ export default function EditPettyCashDialog({ open, expense, categories = [], on
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">קטגוריה <span className="text-red-500">*</span></label>
-              <select
-                value={categoryId}
-                onChange={(e) => setCategoryId(e.target.value)}
-                onBlur={() => setTouched(prev => ({ ...prev, categoryId: true }))}
-                required
-                aria-invalid={Boolean((attemptedSubmit || touched.categoryId) && categoryInvalid)}
-                className={`w-full px-4 py-3 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white [appearance:auto] ${(attemptedSubmit || touched.categoryId) && categoryInvalid ? 'border-red-500' : 'border-gray-300'}`}
-              >
-                <option value="" disabled>בחר קטגוריה</option>
-                {missingOption && (
-                  <option value={categoryId}>{fallbackCategoryLabel || categoryId}</option>
-                )}
-                {categories.map((c) => (
-                  <option key={c.id} value={String(c.id)}>
-                    {c.name}
-                  </option>
-                ))}
-              </select>
-              {(attemptedSubmit || touched.categoryId) && categoryInvalid && (
-                <p className="text-sm text-red-600 mt-1">יש לבחור קטגוריה</p>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                קטגוריות <span className="text-red-500">*</span>
+              </label>
+              
+              <CategoriesField
+                selectedCategories={categoryIds}
+                onChange={(ids) => setCategoryIds(ids)}
+                error={(attemptedSubmit || touched.categoryIds) && catsInvalid}
+              />
+              {(attemptedSubmit || touched.categoryIds) && catsInvalid && (
+                <p className="text-sm text-red-600 mt-1">יש לבחור לפחות קטגוריה אחת</p>
               )}
             </div>
 
