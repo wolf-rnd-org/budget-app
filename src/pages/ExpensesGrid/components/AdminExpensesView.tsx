@@ -6,6 +6,7 @@ import { Expense } from '@/api/types';
 import { useAuthStore } from '@/stores/authStore';
 import { BudgetSummaryCards, SearchFilters, ExpensesTable, AddExpenseWizard, EditExpenseModal } from './index';
 import { expensesApi } from '@/api/http';
+import { getPrograms, type Program } from '@/api/programs';
 
 export function AdminExpensesView() {
   const user = useAuthStore(s => s.user);
@@ -32,6 +33,31 @@ export function AdminExpensesView() {
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
   const [editingExpenseData, setEditingExpenseData] = React.useState<Expense | null>(null);
 
+  // Program filter state (admin view)
+  const [programFilter, setProgramFilter] = React.useState<string>(''); // '' means All programs
+  const [programs, setPrograms] = React.useState<Program[]>([]);
+  const [programsLoading, setProgramsLoading] = React.useState(false);
+  const [programsError, setProgramsError] = React.useState<string | null>(null);
+
+  // Load all programs for dropdown
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setProgramsLoading(true);
+        setProgramsError(null);
+        const list = await getPrograms();
+        if (!cancelled) setPrograms(list || []);
+      } catch (err) {
+        console.error('Error loading programs', err);
+        if (!cancelled) setProgramsError('Failed to load programs');
+      } finally {
+        if (!cancelled) setProgramsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewAllExpenses = userActions.includes('expenses.admin.view');
@@ -50,7 +76,8 @@ export function AdminExpensesView() {
           // No user_id filter for admin view - show all users' expenses
           // No programId filter for admin view - show all programs
           page: 1,
-          pageSize
+          pageSize,
+          programId: programFilter || undefined
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -64,7 +91,7 @@ export function AdminExpensesView() {
     }
 
     fetchInitialExpenses();
-  }, [user?.userId]);
+  }, [user?.userId, programFilter]);
 
   // Fetch expenses when search/filter parameters change
   React.useEffect(() => {
@@ -85,6 +112,7 @@ export function AdminExpensesView() {
           dateTo: dateTo || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          programId: programFilter || undefined,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -103,7 +131,7 @@ export function AdminExpensesView() {
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId]);
+  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, programFilter]);
 
   const loadMoreExpenses = React.useCallback(async () => {
     if (loadingMore || !hasMore || !user?.userId || loadingRef.current) return;
@@ -122,9 +150,10 @@ export function AdminExpensesView() {
         priority: (priorityFilter as any) || undefined,
         dateFrom: dateFrom || undefined,
         dateTo: dateTo || undefined,
-        sort_by: sortBy,
-        sort_dir: sortDir,
-      });
+          sort_by: sortBy,
+          sort_dir: sortDir,
+          programId: programFilter || undefined,
+        });
 
       // Check if we already have these expenses to prevent duplicates
       setExpenses(prev => {
@@ -205,7 +234,8 @@ export function AdminExpensesView() {
         // No user_id filter for admin view - show all users' expenses
         // No programId filter for admin view - show all programs
         page: 1,
-        pageSize
+        pageSize,
+        programId: programFilter || undefined
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -232,7 +262,8 @@ export function AdminExpensesView() {
         // No user_id filter for admin view - show all users' expenses
         // No programId filter for admin view - show all programs
         page: 1,
-        pageSize
+        pageSize,
+        programId: programFilter || undefined
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -279,6 +310,10 @@ export function AdminExpensesView() {
           setDateFrom={setDateFrom}
           dateTo={dateTo}
           setDateTo={setDateTo}
+          programOptions={programs}
+          programFilter={programFilter}
+          setProgramFilter={setProgramFilter}
+          programLoading={programsLoading}
         />
 
         <ExpensesTable
@@ -293,8 +328,7 @@ export function AdminExpensesView() {
           sortBy={sortBy}
           sortDir={sortDir}
           onSortChange={(by, dir) => { setSortBy(by); setSortDir(dir); }}
-          // No programId for admin view - show all programs
-          programId={undefined}
+          programId={programFilter || null}
           expenses={expenses}
           loading={loading}
           loadingMore={loadingMore}
