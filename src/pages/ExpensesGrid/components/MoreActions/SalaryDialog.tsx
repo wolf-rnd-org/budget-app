@@ -9,6 +9,29 @@ type Props = {
   onClose: () => void;
   onSubmit: (payload: SalaryPayload) => Promise<void> | void;
 };
+function onlyDigits(s: string) {
+  return s.replace(/\D/g, '');
+}
+
+const EMPLOYER_COST_MULTIPLIER = 1.151; // עלות מעביד יחסית לברוטו
+const NET_TO_GROSS_FACTOR = 0.8783;     // נטו ≈ 87.83% מהברוטו
+
+function computeEmployerCost(amount: number, isGross: boolean): number {
+  if (!Number.isFinite(amount) || amount <= 0) return 0;
+  const gross = isGross ? amount : amount / NET_TO_GROSS_FACTOR;
+  return +(gross * EMPLOYER_COST_MULTIPLIER).toFixed(2);
+}
+function isValidIsraeliId(raw: string): boolean {
+  const id = onlyDigits(raw);
+  if (id.length < 5 || id.length > 9) return false;
+  const padded = id.padStart(9, '0');
+  let sum = 0;
+  for (let i = 0; i < 9; i++) {
+    const num = Number(padded[i]) * (i % 2 === 0 ? 1 : 2);
+    sum += num > 9 ? num - 9 : num;
+  }
+  return sum % 10 === 0;
+}
 
 export default function SalaryDialog({ open, categories = [], onClose, onSubmit }: Props) {
   const [payee, setPayee] = useState('');
@@ -28,26 +51,56 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
     if (!Number.isFinite(r) || r <= 0 || !Number.isFinite(q) || q <= 0) return 0;
     return +(r * q).toFixed(2);
   }, [rate, quantity]);
+  const employerCost = useMemo(() => {
+    return computeEmployerCost(autoAmount, isGross);
+  }, [autoAmount, isGross]);
 
   // const previewEmployerCost = useMemo(() => {
   //   if (!autoAmount) return 0;
   //   return isGross ? autoAmount * 1.151 : (autoAmount / 0.8783) * 1.151;
   // }, [autoAmount, isGross]);
+  const idDigits = useMemo(() => onlyDigits(idNumber), [idNumber]);
+  const idStatus: 'empty' | 'short' | 'invalid' | 'valid' = useMemo(() => {
+    if (idDigits.length === 0) return 'empty';
+    if (idDigits.length < 9) return 'short';
+    return isValidIsraeliId(idDigits) ? 'valid' : 'invalid';
+  }, [idDigits]);
+
+
 
   const computeErrors = (): Record<string, string> => {
     const next: Record<string, string> = {};
     if (!payee.trim()) next.payee = 'חובה להזין שם מקבל התשלום';
-    if (!idNumber.trim()) next.idNumber = 'חובה להזין תעודת זהות';
+    const id = onlyDigits(idNumber);
+    if (!id) {
+      next.idNumber = 'חובה להזין תעודת זהות';
+    } else if (id.length !== 9) {
+      next.idNumber = 'תעודת זהות חייבת להיות בדיוק 9 ספרות';
+    } else if (!isValidIsraeliId(id)) {
+      next.idNumber = 'תעודת זהות לא תקינה';
+    }
+
     if (!month.trim()) next.month = 'חובה לבחור חודש דיווח';
-    const r = Number(rate); if (!rate || !Number.isFinite(r) || r <= 0) next.rate = 'תעריף חייב להיות גדול מ-0';
-    const q = Number(quantity); if (!quantity || !Number.isFinite(q) || q <= 0) next.quantity = 'כמות חייבת להיות גדולה מ-0';
+
+    const r = Number(rate);
+    if (!rate || !Number.isFinite(r) || r <= 0) next.rate = 'תעריף חייב להיות גדול מ-0';
+
+    const q = Number(quantity);
+    if (!quantity || !Number.isFinite(q) || q <= 0) next.quantity = 'כמות חייבת להיות גדולה מ-0';
+
     if (categoryIds.length === 0) next.categoryIds = 'יש לבחור לפחות קטגוריה אחת';
+
     return next;
   };
 
   const canSubmit = useMemo(() => {
-    return !submitting && Object.keys(computeErrors()).length === 0 && autoAmount > 0;
-  }, [submitting, payee, idNumber, month, rate, quantity, categoryIds, autoAmount]);
+    return (
+      !submitting &&
+      idStatus === 'valid' &&
+      Object.keys(computeErrors()).length === 0 &&
+      autoAmount > 0
+    );
+  }, [submitting, idStatus, payee, idNumber, month, rate, quantity, categoryIds, autoAmount]);
 
   const reset = () => {
     setPayee(''); setIdNumber(''); setMonth(''); setIsGross(false);
@@ -165,16 +218,52 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
 
             {/* ID */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1.5">תעודת זהות <span className="text-red-500">*</span></label>
+              <label className="block text-sm font-medium text-gray-700 mb-1.5">
+                תעודת זהות <span className="text-red-500">*</span>
+              </label>
               <input
                 type="text"
                 inputMode="numeric"
                 value={idNumber}
-                onChange={(e) => { setIdNumber(e.target.value); if (attemptedSubmit) validate(); }}
+                onChange={(e) => {
+                  const digits = onlyDigits(e.target.value).slice(0, 9);
+                  setIdNumber(digits);
+                  if (attemptedSubmit) validate();
+                }}
+                onKeyDown={(e) => {
+                  const allowed = ['Backspace', 'Delete', 'Tab', 'ArrowLeft', 'ArrowRight', 'Home', 'End', 'Enter'];
+                  if (allowed.includes(e.key) || (e.ctrlKey || e.metaKey)) return;
+                  if (!/^\d$/.test(e.key)) e.preventDefault();
+                }}
                 required
-                aria-invalid={!!errors.idNumber}
-                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${attemptedSubmit && errors.idNumber ? 'border-red-500' : 'border-gray-300'}`}
+                maxLength={9}
+                dir="ltr"
+                placeholder="#########"
+                aria-invalid={idStatus === 'invalid'}
+                aria-describedby="idNumberHelp"
+                className={`w-full px-4 py-3 border rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent bg-white ${(attemptedSubmit && (errors.idNumber || idStatus !== 'valid')) || idStatus === 'invalid'
+                  ? 'border-red-500'
+                  : 'border-gray-300'
+                  }`}
               />
+
+              {/* הערת עזרה חיה */}
+              <div id="idNumberHelp" aria-live="polite" className="mt-1 text-xs">
+                {idStatus === 'empty' && (
+                  <span className="text-gray-500">הקלידי 9 ספרות ללא רווחים או מקפים.</span>
+                )}
+                {idStatus === 'short' && (
+                  <span className="text-gray-500">חסרות עוד {9 - idDigits.length} ספרות.</span>
+                )}
+                {idStatus === 'invalid' && idDigits.length === 9 && (
+                  <span className="text-red-600">תעודת זהות לא תקינה.</span>
+                )}
+                {idStatus === 'valid' && (
+                  <span className="text-green-600">תעודת זהות תקינה ✓</span>
+                )}
+              </div>
+
+              {/* שגיאת submit (אם נשארת מהמנגנון הקיים) */}
               {errors.idNumber && <p className="text-xs text-red-600 mt-1">{errors.idNumber}</p>}
             </div>
 
@@ -262,25 +351,37 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
           </div>
           {/* Summary card */}
           <div className="rounded-lg border border-gray-200 bg-gray-50/50 px-3 py-2">
-            <div className="flex flex-wrap items-center gap-2 md:gap-3 text-gray-600 text-sm" dir="rtl">
-              <span className="inline-flex items-center gap-1.5">
-                {/* <span className="text-xs text-gray-500">תצוגה מקדימה</span> */}
-                {/* <span className="h-1 w-1 rounded-full bg-gray-300" /> */}
+            <div className="flex flex-col gap-2 text-gray-600 text-sm" dir="rtl">
+              {/* שורה 1: סכום + חישוב לפי */}
+              <div className="flex flex-wrap items-center gap-2">
                 <span className="font-medium text-gray-700">סכום:</span>
                 <span className="tabular-nums">{autoAmount ? autoAmount.toFixed(2) : '-'}</span>
-              </span>
+                {/* <span className="text-xs text-gray-500">({isGross ? 'ברוטו' : 'נטו'})</span> */}
 
-              <span className="inline-flex items-center gap-1.5 md:pl-3 md:border-r md:border-gray-200">
-                <span className="text-xs text-gray-500">חישוב לפי</span>
-                <span className="h-1 w-1 rounded-full bg-gray-300" />
-                <span className="tabular-nums">
-                  {Number(rate) > 0 && Number(quantity) > 0
-                    ? `${Number(rate).toFixed(2)} × ${Number(quantity)}`
-                    : 'תעריף וכמות'}
+                <span className="inline-flex items-center gap-1.5 md:pl-3 md:border-r md:border-gray-200">
+                  <span className="text-xs text-gray-500">חישוב לפי</span>
+                  <span className="h-1 w-1 rounded-full bg-gray-300" />
+                  <span className="tabular-nums">
+                    {Number(rate) > 0 && Number(quantity) > 0
+                      ? `${Number(rate).toFixed(2)} × ${Number(quantity)}`
+                      : 'תעריף וכמות'}
+                  </span>
                 </span>
-              </span>
+              </div>
+
+              {/* שורה 2: ירד מהתקציב */}
+              <div className="flex items-center gap-2">
+                <span className="font-medium text-gray-700">ירד מהתקציב (עלות מעביד):</span>
+                <span className="tabular-nums">{employerCost ? employerCost.toFixed(2) : '-'}</span>
+              </div>
             </div>
 
+            {/* נוסחה */}
+            <div className="mt-1 text-xs text-gray-500">
+              {isGross
+                ? `ברוטו × ${EMPLOYER_COST_MULTIPLIER}`
+                : `נטו ÷ ${NET_TO_GROSS_FACTOR} × ${EMPLOYER_COST_MULTIPLIER}`}
+            </div>
           </div>
         </form>
 
@@ -317,7 +418,7 @@ export default function SalaryDialog({ open, categories = [], onClose, onSubmit 
             )}
           </button>
         </div>
-      </div>
-    </div>
+      </div >
+    </div >
   );
 }

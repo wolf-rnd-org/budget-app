@@ -21,7 +21,9 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
   const [hasUnsavedChanges, setHasUnsavedChanges] = React.useState(false);
   const [newInvoiceFile, setNewInvoiceFile] = React.useState<File | null>(null);
   const [newBankFile, setNewBankFile] = React.useState<File | null>(null);
-
+  const [touched, setTouched] = React.useState<Record<string, boolean>>({});
+  const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
+  const [categoryIds, setCategoryIds] = React.useState<string[]>([]);
   // const [programs, setPrograms] = React.useState<Array<{ id: string; name: string }>>([]);
 
 
@@ -51,7 +53,18 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
     if (typeof f === 'object' && (f as any).url) return true;
     return false;
   };
-
+  // same idea as in EditPettyCashDialog
+  const normalizeCategoryIds = (cats: any): string[] => {
+    if (!cats) return [];
+    if (Array.isArray(cats)) {
+      return cats
+        .map((c) => typeof c === 'string'
+          ? String(c)
+          : String(c?.id ?? c?.recId ?? c?.recordId ?? c?.value ?? ''))
+        .filter(Boolean);
+    }
+    return typeof cats === 'string' ? [cats] : [];
+  };
   // Prefill from initialExpense if provided, otherwise fetch from server
   React.useEffect(() => {
     if (!isOpen || !expenseId) return;
@@ -65,19 +78,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
           // Use data we already have (from grid) without hitting the server
           setExpense(initialExpense);
           // Normalize categories to string[] for the form state
-          const normalizedCategories: string[] = (() => {
-            const cats = initialExpense.categories as any;
-            if (!cats) return [];
-            if (Array.isArray(cats)) {
-              if (cats.length === 0) return [];
-              if (typeof cats[0] === 'string') return cats as string[];
-              return (cats as Array<any>)
-                .map((c) => c?.id ?? c?.recId ?? c?.recordId ?? c?.value)
-                .filter(Boolean);
-            }
-            if (typeof cats === 'string') return [cats as string];
-            return [];
-          })();
+          const normalizedCategories = normalizeCategoryIds((initialExpense as any).categories);
           setFormData({
             budget: initialExpense.budget,
             program_id: initialExpense.program_id,
@@ -96,6 +97,8 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
             bank_account: (initialExpense as any).bank_account || '',
             beneficiary: (initialExpense as any).beneficiary || '',
           });
+          setCategoryIds(normalizedCategories);
+          prevProgramIdRef.current = initialExpense.program_id || '';
         } else if (isMockMode()) {
           // Mock response - simulate API delay
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -118,16 +121,12 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
             status: "pending",
             user_id: "101"
           };
-
+          prevProgramIdRef.current = "" as string;
           setExpense(mockExpense);
-          const mockCats: string[] = Array.isArray(mockExpense.categories)
-            ? (typeof (mockExpense as any).categories[0] === 'string'
-              ? (mockExpense.categories as string[])
-              : (mockExpense.categories as any[]).map((c: any) => c?.id ?? c?.recId ?? c?.recordId ?? c?.value).filter(Boolean))
-            : (typeof mockExpense.categories === 'string' ? [mockExpense.categories as string] : []);
+          const mockCats = normalizeCategoryIds((mockExpense as any).categories);
           setFormData({
             budget: mockExpense.budget,
-            programId: "", // אין כרגע במוק
+            program_id: "", // אין כרגע במוק
             project: mockExpense.project,
             date: mockExpense.date,
             categories: mockCats,
@@ -138,18 +137,19 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
             invoice_type: mockExpense.invoice_type,
             supplier_email: mockExpense.supplier_email,
             status: mockExpense.status,
+            bank_name: "",
+            bank_branch: "",
+            bank_account: "",
+            beneficiary: "",
           });
+          setCategoryIds(mockCats);
         } else {
 
           const response = await expensesApi.get(`/expenses/${expenseId}`);
           const expenseData = response.data;
 
           setExpense(expenseData);
-          const apiCats: string[] = Array.isArray(expenseData.categories)
-            ? (typeof (expenseData as any).categories[0] === 'string'
-              ? (expenseData.categories as string[])
-              : (expenseData.categories as any[]).map((c: any) => c?.id ?? c?.recId ?? c?.recordId ?? c?.value).filter(Boolean))
-            : (typeof expenseData.categories === 'string' ? [expenseData.categories as string] : []);
+          const apiCats = normalizeCategoryIds((expenseData as any).categories);
           setFormData({
             budget: expenseData.budget,
             program_id: expenseData.program_id,
@@ -163,7 +163,13 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
             invoice_type: expenseData.invoice_type,
             supplier_email: expenseData.supplier_email,
             status: expenseData.status,
+            bank_name: "",
+            bank_branch: "",
+            bank_account: "",
+            beneficiary: "",
           });
+          setCategoryIds(apiCats);
+          prevProgramIdRef.current = expenseData.program_id || '';
         }
       } catch (err) {
         setError('שגיאה בטעינת נתוני ההוצאה');
@@ -189,6 +195,10 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
 
   const handleInputChange = (field: string, value: any) => {
     setFormData(prev => ({ ...prev, [field]: value }));
+    if (field === 'program_id') {
+      setCategoryIds([]);            // איפוס רק במעבר תוכנית
+      setTouched(prev => ({ ...prev, categories: false }));
+    }
     setHasUnsavedChanges(true);
   };
 
@@ -241,19 +251,47 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       return false;
     }
 
-    if (formData.categories.length === 0) {
+    if (categoryIds.length === 0) {
       setError('יש לבחור לפחות קטגוריה אחת');
       return false;
     }
     return true;
   };
+  // מזהה התוכנית המקורית של ההוצאה (כשהמודאל נטען)
+  const originalProgramId = React.useMemo(
+    () => expense?.program_id ?? '',
+    [expense?.program_id]
+  );
+
+  // נשתמש ב-ref כדי לזכור מה היה בפעם הקודמת ולזהות שינוי אמיתי
+  const prevProgramIdRef = React.useRef<string | null>(null);
+
   React.useEffect(() => {
-    // אפשר: איפוס מלא, או לסנן מול האופציות ב-CategoriesField
-    if (formData.programId) {
-      setFormData(prev => ({ ...prev, categories: [] }));
+    if (!isOpen) return;
+
+    // מהו ה־program הנוכחי שממנו אמורות להיטען הקטגוריות?
+    const curr = (formData.program_id || originalProgramId || '') as string;
+
+    // ריצה ראשונה אחרי טעינה: לא לאפס קטגוריות.
+    if (prevProgramIdRef.current === null) {
+      prevProgramIdRef.current = curr;
+      return;
     }
-  }, [formData.program_id]);
+
+    // אם באמת השתנה מזהה התוכנית לעומת הקודם — רק אז לאפס קטגוריות
+    if (prevProgramIdRef.current !== curr && formData.program_id) {
+      setTouched({});
+      setAttemptedSubmit(false);
+      // setFormData(prev => ({ ...prev, categories: [] }));
+      setCategoryIds([]); // ✅ לאפס את מקור האמת שמוצג ב-UI
+
+    }
+
+    // עדכון ה-ref לפעם הבאה
+    prevProgramIdRef.current = curr;
+  }, [isOpen, formData.program_id, originalProgramId]);
   const handleSave = async () => {
+    setAttemptedSubmit(true);
     if (!validateForm()) return;
 
     try {
@@ -263,6 +301,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       const updateData = {
         ...formData,
         user_id: expense?.user_id,
+        categories: categoryIds.map(String),
       };
 
       if (isMockMode()) {
@@ -319,6 +358,10 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       invoice_type: '',
       supplier_email: '',
       status: '',
+      bank_name: '',
+      bank_branch: '',
+      bank_account: '',
+      beneficiary: '',
     });
     setNewInvoiceFile(null);
     setNewBankFile(null);
@@ -454,6 +497,37 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                     </div>
 
 
+                    {/* Categories Section */}
+                    <div className="md:col-span-2">
+                      <h3 className="block text-sm font-medium text-gray-700 mb-2">
+                        קטגוריות <span className="text-500">*</span>
+                      </h3>
+
+                      {/** התאמה יציבה לתכנית + רמונט בעת שינוי */}
+                      {(() => {
+                        const effectiveProgramId = formData.program_id || expense?.program_id || undefined;
+                        const catsInvalid = categoryIds.length === 0;
+                        return (
+                          <>
+                            <CategoriesField
+                              // key={effectiveProgramId ?? 'no-program'}
+                              // programId={effectiveProgramId}
+                              selectedCategories={categoryIds}
+                              onChange={(ids) => {
+                                setCategoryIds(ids);
+                                setTouched(prev => ({ ...prev, categories: true }));
+                              }}
+                              error={Boolean((attemptedSubmit || touched.categories) && catsInvalid)}
+                            />
+                            {(attemptedSubmit || touched.categories) && catsInvalid && (
+                              <p className="text-sm text-red-600 mt-1">יש לבחור לפחות קטגוריה אחת</p>
+                            )}
+                          </>
+                        );
+                      })()}
+
+
+                    </div>
                   </div>
                 </div>
 
