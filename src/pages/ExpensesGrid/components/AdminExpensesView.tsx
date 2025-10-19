@@ -5,7 +5,11 @@ import { getExpenses } from '@/api/expenses';
 import { Expense } from '@/api/types';
 import { useAuthStore } from '@/stores/authStore';
 import { BudgetSummaryCards, SearchFilters, ExpensesTable, AddExpenseWizard, EditExpenseModal } from './index';
+import EditSalaryDialog from './MoreActions/EditSalaryDialog';
+import EditPettyCashDialog from './MoreActions/EditPettyCashDialog';
 import { expensesApi } from '@/api/http';
+import { getPrograms, type Program } from '@/api/programs';
+// import { useCategoriesStore } from '@/stores/categoriesStore'; // ← ADD
 
 export function AdminExpensesView() {
   const user = useAuthStore(s => s.user);
@@ -29,8 +33,51 @@ export function AdminExpensesView() {
   const [sortDir, setSortDir] = React.useState<'asc' | 'desc'>('desc');
   const [showAddExpense, setShowAddExpense] = React.useState(false);
   const [showEditExpense, setShowEditExpense] = React.useState(false);
+  const [showEditSalary, setShowEditSalary] = React.useState(false);
+  const [showEditPettyCash, setShowEditPettyCash] = React.useState(false);
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
   const [editingExpenseData, setEditingExpenseData] = React.useState<Expense | null>(null);
+
+  // Program filter state (admin view)
+  const [programFilter, setProgramFilter] = React.useState<string>(''); // '' means All programs
+  const [programs, setPrograms] = React.useState<Program[]>([]);
+  const [programsLoading, setProgramsLoading] = React.useState(false);
+  const [programsError, setProgramsError] = React.useState<string | null>(null);
+
+//   // ← ADD: קטגוריות לפי תוכנית ההוצאה הנערכת
+//   const categoriesByProgram = useCategoriesStore(s => s.categoriesByProgram);
+//   const fetchCategoriesForProgram = useCategoriesStore(s => s.fetchForProgram);
+//   const [dialogProgramId, setDialogProgramId] = React.useState<string | null>(null);
+//   const categoryItems = React.useMemo(() => {
+//     if (!dialogProgramId) return [];
+//     const items = categoriesByProgram[dialogProgramId]?.items || [];
+// return items.map(it => ({ id: it.id ?? it.recId, name: it.name }));
+//   }, [dialogProgramId, categoriesByProgram]);
+//   React.useEffect(() => {
+//     if (dialogProgramId) {
+//       const entry = categoriesByProgram[dialogProgramId];
+//       const needsFetch = !entry || (!entry.loading && (!entry.lastFetched || (entry.items?.length ?? 0) === 0));
+//       if (needsFetch) fetchCategoriesForProgram(dialogProgramId);
+//     }
+//   }, [dialogProgramId, categoriesByProgram, fetchCategoriesForProgram]);
+  // Load all programs for dropdown
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        setProgramsLoading(true);
+        setProgramsError(null);
+        const list = await getPrograms();
+        if (!cancelled) setPrograms(list || []);
+      } catch (err) {
+        console.error('Error loading programs', err);
+        if (!cancelled) setProgramsError('Failed to load programs');
+      } finally {
+        if (!cancelled) setProgramsLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   // Get user actions from store
   const userActions = user?.actions || [];
@@ -50,7 +97,8 @@ export function AdminExpensesView() {
           // No user_id filter for admin view - show all users' expenses
           // No programId filter for admin view - show all programs
           page: 1,
-          pageSize
+          pageSize,
+          programId: programFilter || undefined
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -64,7 +112,7 @@ export function AdminExpensesView() {
     }
 
     fetchInitialExpenses();
-  }, [user?.userId]);
+  }, [user?.userId, programFilter]);
 
   // Fetch expenses when search/filter parameters change
   React.useEffect(() => {
@@ -85,6 +133,7 @@ export function AdminExpensesView() {
           dateTo: dateTo || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
+          programId: programFilter || undefined,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -103,7 +152,7 @@ export function AdminExpensesView() {
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId]);
+  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, programFilter]);
 
   const loadMoreExpenses = React.useCallback(async () => {
     if (loadingMore || !hasMore || !user?.userId || loadingRef.current) return;
@@ -124,6 +173,7 @@ export function AdminExpensesView() {
         dateTo: dateTo || undefined,
         sort_by: sortBy,
         sort_dir: sortDir,
+        programId: programFilter || undefined,
       });
 
       // Check if we already have these expenses to prevent duplicates
@@ -141,7 +191,7 @@ export function AdminExpensesView() {
       loadingRef.current = false;
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, pageSize, user?.userId, currentPage]);
+  }, [hasMore, loadingMore, pageSize, user?.userId, currentPage, searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, programFilter]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -163,6 +213,55 @@ export function AdminExpensesView() {
     event.stopPropagation();
     setEditingExpenseId(expense.id);
     setEditingExpenseData(expense);
+    // ← ADD: קבעי את התוכנית הרלוונטית לדיאלוג
+    // const programFromExpense =
+    //   (expense as any).program_id ||
+    //   (expense as any).programId ||
+    //   (expense as any).program?.id ||
+    //   (Array.isArray((expense as any).program) ? (expense as any).program[0] : '');
+    // setDialogProgramId(programFromExpense || programFilter || null);
+
+    // Detect special types like in RegularExpensesView
+    const candidates = [
+      (expense as any).invoice_type,
+      (expense as any).expense_type,
+      (expense as any).type,
+      (expense as any).status,
+    ].filter(Boolean).map(v => String(v).toLowerCase());
+
+    const isPettyCash =
+      candidates.some(t => ['petty_cash', 'petty-cash', 'petty cash'].includes(t)) ||
+      ((expense as any).invoice_type === 'קופה קטנה' || (expense as any).expense_type === 'קופה קטנה');
+    const isSalary =
+      candidates.some(t => ['salary', 'salary_report', 'salary-report', 'salary report'].includes(t)) ||
+      ((expense as any).invoice_type === 'דיווח שכר' || (expense as any).expense_type === 'דיווח שכר');
+
+    if (isPettyCash) {
+      setShowEditExpense(false);
+      setShowEditSalary(false);
+      setShowEditPettyCash(true);
+      return;
+    }
+
+    if (isSalary) {
+      setShowEditExpense(false);
+      setShowEditPettyCash(false);
+      (async () => {
+        try {
+          const { data } = await expensesApi.get(`/${expense.id}`);
+          setEditingExpenseData(data?.fields ? { id: data.id, ...data.fields } : data);
+        } catch (e) {
+          console.error('Failed to load full salary expense', e);
+        } finally {
+          setShowEditSalary(true);
+        }
+      })();
+      return;
+    }
+
+    // Fallback to generic editor
+    setShowEditPettyCash(false);
+    setShowEditSalary(false);
     setShowEditExpense(true);
   };
 
@@ -205,7 +304,8 @@ export function AdminExpensesView() {
         // No user_id filter for admin view - show all users' expenses
         // No programId filter for admin view - show all programs
         page: 1,
-        pageSize
+        pageSize,
+        programId: programFilter || undefined
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -219,7 +319,10 @@ export function AdminExpensesView() {
 
   const handleExpenseUpdated = async (updatedExpense: Expense) => {
     setShowEditExpense(false);
+    setShowEditPettyCash(false);
+    setShowEditSalary(false);
     setEditingExpenseId(null);
+    setEditingExpenseData(null);
 
     if (!user?.userId) return;
 
@@ -232,7 +335,8 @@ export function AdminExpensesView() {
         // No user_id filter for admin view - show all users' expenses
         // No programId filter for admin view - show all programs
         page: 1,
-        pageSize
+        pageSize,
+        programId: programFilter || undefined
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -279,6 +383,10 @@ export function AdminExpensesView() {
           setDateFrom={setDateFrom}
           dateTo={dateTo}
           setDateTo={setDateTo}
+          programOptions={programs}
+          programFilter={programFilter}
+          setProgramFilter={setProgramFilter}
+          programLoading={programsLoading}
         />
 
         <ExpensesTable
@@ -293,8 +401,7 @@ export function AdminExpensesView() {
           sortBy={sortBy}
           sortDir={sortDir}
           onSortChange={(by, dir) => { setSortBy(by); setSortDir(dir); }}
-          // No programId for admin view - show all programs
-          programId={undefined}
+          programId={programFilter || null}
           expenses={expenses}
           loading={loading}
           loadingMore={loadingMore}
@@ -316,13 +423,43 @@ export function AdminExpensesView() {
           totalExpenses={0}
         />
 
-        {editingExpenseId && (
+        {editingExpenseId && showEditExpense && (
           <EditExpenseModal
             isOpen={showEditExpense}
             expenseId={editingExpenseId}
             initialExpense={editingExpenseData}
             onClose={() => {
               setShowEditExpense(false);
+              setEditingExpenseId(null);
+              setEditingExpenseData(null);
+            }}
+            onSuccess={handleExpenseUpdated}
+          />
+        )}
+
+        {editingExpenseId && showEditSalary && (
+          <EditSalaryDialog
+            // key={dialogProgramId || 'salary'}
+            open={showEditSalary}
+            expense={editingExpenseData}
+            // categories={categoryItems}  // ← ADD
+            onClose={() => {
+              setShowEditSalary(false);
+              setEditingExpenseId(null);
+              setEditingExpenseData(null);
+            }}
+            onSuccess={handleExpenseUpdated}
+          />
+        )}
+
+        {editingExpenseId && showEditPettyCash && (
+          <EditPettyCashDialog
+            // key={dialogProgramId || 'petty'}
+            open={showEditPettyCash}
+            expense={editingExpenseData}
+            // categories={categoryItems}  // ← ADD
+            onClose={() => {
+              setShowEditPettyCash(false);
               setEditingExpenseId(null);
               setEditingExpenseData(null);
             }}
