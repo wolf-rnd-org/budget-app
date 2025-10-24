@@ -23,7 +23,15 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
   const [newBankFile, setNewBankFile] = React.useState<File | null>(null);
   const [touched, setTouched] = React.useState<Record<string, boolean>>({});
   const [attemptedSubmit, setAttemptedSubmit] = React.useState(false);
-  const [categoryIds, setCategoryIds] = React.useState<string[]>([]);
+  const [categoryIds, setCategoryIds] = React.useState<string[]>(() => {
+    if (initialExpense) {
+      const ids = normalizeCategoryIds((initialExpense as any).categories);
+      return ids.length ? ids : [];
+    }
+    // זה הערך ההתחלתי שיינתן אם אין initialExpense, וטעינת הנתונים תבוא מיד ב-useEffect
+    return [];
+  });
+
   // const [programs, setPrograms] = React.useState<Array<{ id: string; name: string }>>([]);
 
 
@@ -54,17 +62,19 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
     return false;
   };
   // same idea as in EditPettyCashDialog
-  const normalizeCategoryIds = (cats: any): string[] => {
+  function normalizeCategoryIds(cats: any): string[] {
     if (!cats) return [];
     if (Array.isArray(cats)) {
       return cats
-        .map((c) => typeof c === 'string'
-          ? String(c)
-          : String(c?.id ?? c?.recId ?? c?.recordId ?? c?.value ?? ''))
+        .map((c) =>
+          typeof c === 'string'
+            ? String(c)
+            : String(c?.id ?? c?.recId ?? c?.recordId ?? c?.value ?? '')
+        )
         .filter(Boolean);
     }
     return typeof cats === 'string' ? [cats] : [];
-  };
+  }
   // Prefill from initialExpense if provided, otherwise fetch from server
   React.useEffect(() => {
     if (!isOpen || !expenseId) return;
@@ -80,24 +90,24 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
           // Normalize categories to string[] for the form state
           const normalizedCategories = normalizeCategoryIds((initialExpense as any).categories);
           setFormData({
-            budget: initialExpense.budget,
-            program_id: initialExpense.program_id,
-            project: initialExpense.project || '',
-            date: initialExpense.date || '',
-            categories: normalizedCategories,
-            amount: initialExpense.amount,
-            invoice_description: initialExpense.invoice_description,
-            supplier_name: initialExpense.supplier_name,
-            business_number: initialExpense.business_number,
-            invoice_type: initialExpense.invoice_type,
-            supplier_email: initialExpense.supplier_email,
-            status: initialExpense.status,
-            bank_name: (initialExpense as any).bank_name || '',
-            bank_branch: (initialExpense as any).bank_branch || '',
-            bank_account: (initialExpense as any).bank_account || '',
-            beneficiary: (initialExpense as any).beneficiary || '',
+            budget: initialExpense.budget ?? 0,
+            program_id: initialExpense.program_id ?? '',
+            project: initialExpense.project ?? '',
+            date: initialExpense.date ?? '',
+            categories: normalizedCategories ?? [],
+            amount: initialExpense.amount ?? 0,
+            invoice_description: initialExpense.invoice_description ?? '',
+            supplier_name: initialExpense.supplier_name ?? '',
+            business_number: initialExpense.business_number ?? '',
+            invoice_type: initialExpense.invoice_type ?? '',
+            supplier_email: initialExpense.supplier_email ?? '',
+            status: initialExpense.status ?? '',
+            bank_name: (initialExpense as any).bank_name ?? '',
+            bank_branch: (initialExpense as any).bank_branch ?? '',
+            bank_account: (initialExpense as any).bank_account ?? '',
+            beneficiary: (initialExpense as any).beneficiary ?? '',
           });
-          setCategoryIds(normalizedCategories);
+          setCategoryIds(normalizedCategories.length ? normalizedCategories : []);
           prevProgramIdRef.current = initialExpense.program_id || '';
         } else if (isMockMode()) {
           // Mock response - simulate API delay
@@ -251,7 +261,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       return false;
     }
 
-    if (categoryIds.length === 0) {
+    if ((categoryIds?.length ?? 0) === 0) {
       setError('יש לבחור לפחות קטגוריה אחת');
       return false;
     }
@@ -301,7 +311,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       const updateData = {
         ...formData,
         user_id: expense?.user_id,
-        categories: categoryIds.map(String),
+        categories: (categoryIds ?? []).map(String),
       };
 
       if (isMockMode()) {
@@ -365,6 +375,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
     });
     setNewInvoiceFile(null);
     setNewBankFile(null);
+    setCategoryIds([]);
     setHasUnsavedChanges(false);
     setError(null);
   };
@@ -505,17 +516,20 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
 
                       {/** התאמה יציבה לתכנית + רמונט בעת שינוי */}
                       {(() => {
-                        const effectiveProgramId = formData.program_id || expense?.program_id || undefined;
-                        const catsInvalid = categoryIds.length === 0;
+                        const effectiveProgramId = formData.program_id || expense?.program_id || '';
+                        const catsInvalid = (categoryIds?.length ?? 0) === 0;
+                        const categoriesKey = categoryIds.length > 0 ? categoryIds.join(',') : 'none'; // ייצוג יציב של הקטגוריות הנבחרות
+
                         return (
                           <>
                             <CategoriesField
-                              // key={effectiveProgramId ?? 'no-program'}
-                              // programId={effectiveProgramId}
+                              // key={`${expenseId ?? 'no-id'}::${effectiveProgramId || 'no-prog'}::${categoriesKey}`}
+                              programId={effectiveProgramId}
                               selectedCategories={categoryIds}
                               onChange={(ids) => {
-                                setCategoryIds(ids);
+                                setCategoryIds(ids.map(String));
                                 setTouched(prev => ({ ...prev, categories: true }));
+                                setHasUnsavedChanges(true); // 
                               }}
                               error={Boolean((attemptedSubmit || touched.categories) && catsInvalid)}
                             />
