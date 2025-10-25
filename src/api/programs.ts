@@ -75,9 +75,14 @@ export async function getProgramsByUserId(userId: string | number): Promise<Prog
 // ---------------- NEW FUNCTION ----------------
 export interface ProgramSummary {
   program_id: string;
+  // Total budget must include base budget + income
   total_budget: number;
   total_expenses: number;
   remaining_balance: number;
+  // New optional fields to support income-aware summaries
+  // base_budget?: number;
+  income?: number;
+  income_details?: string | null;
 }
 export async function getProgramSummary(
   programId: string | number
