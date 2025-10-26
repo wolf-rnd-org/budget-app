@@ -1,8 +1,11 @@
 
   {
     "program_id": "1",
-    "total_budget": 20000,
+    "base_budget": 100000,
+    "extra_budget": 30000,
+    "income": 20000,
+    "total_budget": 150000,
     "total_expenses": 15200,
-    "remaining_balance": 4800
+    "remaining_balance": 134800
   }
 

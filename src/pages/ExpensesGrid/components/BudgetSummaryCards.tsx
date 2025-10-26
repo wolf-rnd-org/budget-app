@@ -7,6 +7,9 @@ interface BudgetSummaryCardsProps {
   totalExpenses: number;
   remainingBalance: number;
   budgetUsedPercentage: number;
+  baseBudget?: number | null;
+  extraBudget?: number | null;
+  income?: number | null;
 }
 
 export function BudgetSummaryCards({
@@ -14,6 +17,9 @@ export function BudgetSummaryCards({
   totalExpenses,
   remainingBalance,
   budgetUsedPercentage,
+  baseBudget,
+  extraBudget,
+  income,
 }: BudgetSummaryCardsProps) {
   const percentLeft = totalBudget > 0
     ? Math.max(0, Math.round((remainingBalance / totalBudget) * 100))
@@ -37,6 +43,13 @@ export function BudgetSummaryCards({
             <h3 className="text-lg font-semibold text-gray-900">סה"כ תקציב</h3>
           </div>
           <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalBudget)}</p>
+          {
+            <div className="mt-3 text-sm text-gray-700 space-y-1">
+              {Number(baseBudget) > 0 && <div>• תקציב בסיסי: {formatCurrency(Number(baseBudget))}</div>}
+              {Number(extraBudget) > 0 && <div>• תקציב חריגה: {formatCurrency(Number(extraBudget))}</div>}
+              {Number(income) > 0 && <div>• הכנסה: {formatCurrency(Number(income))}</div>}
+            </div>
+         }
         </div>
 
         {/* Remaining Balance */}
@@ -64,10 +77,9 @@ export function BudgetSummaryCards({
           <div className="mt-2">
             <div className="w-full bg-gray-200 rounded-full h-2">
               <div
-                className={`h-2 rounded-full transition-all duration-300 ${
-                  budgetUsedPercentage > 90 ? 'bg-red-500' :
+                className={`h-2 rounded-full transition-all duration-300 ${budgetUsedPercentage > 90 ? 'bg-red-500' :
                   budgetUsedPercentage > 75 ? 'bg-amber-500' : 'bg-green-500'
-                }`}
+                  }`}
                 style={{ width: `${Math.min(budgetUsedPercentage, 100)}%` }}
               />
             </div>

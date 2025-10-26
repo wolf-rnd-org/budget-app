@@ -34,6 +34,10 @@ export function RegularExpensesView() {
   const [remainingBalance, setRemainingBalance] = React.useState(0);
   const [budgetUsedPercentage, setBudgetUsedPercentage] = React.useState(0);
   const [budgetLoading, setBudgetLoading] = React.useState(true);
+  // Budget breakdown (optional)
+  const [baseBudget, setBaseBudget] = React.useState<number | null>(null);
+  const [extraBudget, setExtraBudget] = React.useState<number | null>(null);
+  const [income, setIncome] = React.useState<number | null>(null);
 
   // Filter states
   const [searchText, setSearchText] = React.useState('');
@@ -83,6 +87,9 @@ export function RegularExpensesView() {
         setTotalExpenses(summary.total_expenses);
         setRemainingBalance(summary.remaining_balance);
         setBudgetUsedPercentage((summary.total_expenses / summary.total_budget) * 100);
+        setBaseBudget((summary as any).base_budget ?? null);
+        setExtraBudget((summary as any).extra_budget ?? null);
+        setIncome((summary as any).income ?? null);
       } catch (err) {
         console.error('Error fetching budget summary:', err);
       } finally {
@@ -421,6 +428,9 @@ export function RegularExpensesView() {
         ? (summary.total_expenses / summary.total_budget) * 100
         : 0;
       setBudgetUsedPercentage(usedPct);
+      setBaseBudget((summary as any).base_budget ?? null);
+      setExtraBudget((summary as any).extra_budget ?? null);
+      setIncome((summary as any).income ?? null);
     } catch (err) {
       console.error("Error refreshing expenses and budget summary:", err);
       // Fallback to optimistic update if server fetch fails
@@ -459,6 +469,9 @@ export function RegularExpensesView() {
         setTotalExpenses(summary.total_expenses);
         setRemainingBalance(summary.remaining_balance);
         setBudgetUsedPercentage((summary.total_expenses / summary.total_budget) * 100);
+        setBaseBudget((summary as any).base_budget ?? null);
+        setExtraBudget((summary as any).extra_budget ?? null);
+        setIncome((summary as any).income ?? null);
       }
     } catch (err) {
       console.error('Error refreshing expenses and budget summary:', err);
@@ -531,6 +544,9 @@ export function RegularExpensesView() {
             totalExpenses={totalExpenses}
             remainingBalance={remainingBalance}
             budgetUsedPercentage={budgetUsedPercentage}
+            baseBudget={baseBudget}
+            extraBudget={extraBudget}
+            income={income}
             budgetLoaded={!budgetLoading}
           />
         )}
