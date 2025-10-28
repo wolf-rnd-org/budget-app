@@ -31,6 +31,9 @@ export function ProgramAssignmentSection() {
   const [users, setUsers] = React.useState<User[]>([]);
   const [assignments, setAssignments] = React.useState<UserProgramAssignment[]>([]);
   const [loading, setLoading] = React.useState(true);
+  // Searching state to keep input focused and avoid unmounts during search
+  const [isSearching, setIsSearching] = React.useState(false);
+  const searchReqIdRef = React.useRef(0);
   // Pagination state for users
   const PAGE_SIZE = 10;
   const [page, setPage] = React.useState(1);
@@ -43,6 +46,7 @@ export function ProgramAssignmentSection() {
   const [error, setError] = React.useState<string | null>(null);
   const [userSuccessMessages, setUserSuccessMessages] = React.useState<Map<string, string>>(new Map());
   const [copiedPasswords, setCopiedPasswords] = React.useState<Set<string>>(new Set());
+  const isComposingRef = React.useRef(false);
 
   // Search and dropdown states
   const [userSearch, setUserSearch] = React.useState('');
@@ -54,21 +58,53 @@ export function ProgramAssignmentSection() {
     fetchData();
   }, [user?.userId]);
 
-  // Fetch users when search changes
+  // Fetch users when search changes (debounced)
   React.useEffect(() => {
     if (!user?.userId) return;
 
     const fetchFilteredUsers = async () => {
+      const reqId = ++searchReqIdRef.current;
+      setIsSearching(true);
       try {
-        setLoading(true);
+        // Do not reload programs on search if already loaded
+        if (programs.length > 0) {
+          const usersResponse = await authApi.get('/users', {
+            params: {
+              page: 1,
+              page_size: PAGE_SIZE,
+              search: userSearch || undefined,
+            },
+          });
+
+          const normalizedUsers: User[] = (usersResponse.data || []).map((u: any) => ({
+            ...u,
+            id: String(u.id ?? u.user_id),
+          }));
+
+          if (reqId === searchReqIdRef.current) {
+            setUsers(normalizedUsers);
+            setPage(1);
+            setHasMoreUsers((normalizedUsers?.length || 0) === PAGE_SIZE);
+
+            const initialAssignments = normalizedUsers.map((u: User) => {
+              const uid = String(u.id);
+              const programIds = programs
+                .filter(p => Array.isArray(p.user_ids) && p.user_ids!.map(String).includes(uid))
+                .map(p => p.id);
+              return { userId: uid, programIds };
+            });
+            setAssignments(initialAssignments);
+          }
+          return;
+        }
         const [programsResponse, usersResponse] = await Promise.all([
           programsApi.get(`/`),
           authApi.get('/users', {
             params: {
               page: 1,
               page_size: PAGE_SIZE,
-              search: userSearch || undefined
-            }
+              search: userSearch || undefined,
+            },
           }),
         ]);
 
@@ -78,34 +114,46 @@ export function ProgramAssignmentSection() {
           id: String(u.id ?? u.user_id),
         }));
 
-        setPrograms(programsData);
-        setUsers(normalizedUsers);
-        setPage(1);
-        setHasMoreUsers((normalizedUsers?.length || 0) === PAGE_SIZE);
+        if (reqId === searchReqIdRef.current) {
+          setPrograms(programsData);
+          setUsers(normalizedUsers);
+          setPage(1);
+          setHasMoreUsers((normalizedUsers?.length || 0) === PAGE_SIZE);
 
-        // Initialize assignments from programs' user_ids mapping
-        const initialAssignments = normalizedUsers.map((u: User) => {
-          const uid = String(u.id);
-          const programIds = programsData
-            .filter(p => Array.isArray(p.user_ids) && p.user_ids!.map(String).includes(uid))
-            .map(p => p.id);
-          return { userId: uid, programIds };
-        });
-        setAssignments(initialAssignments);
+          // Initialize assignments from programs' user_ids mapping
+          const initialAssignments = normalizedUsers.map((u: User) => {
+            const uid = String(u.id);
+            const programIds = programsData
+              .filter(p => Array.isArray(p.user_ids) && p.user_ids!.map(String).includes(uid))
+              .map(p => p.id);
+            return { userId: uid, programIds };
+          });
+          setAssignments(initialAssignments);
+        }
       } catch (err) {
-        setError('שגיאה בטעינת המשתמשים');
+        if (reqId === searchReqIdRef.current) { setError('שגיאה בטעינת המשתמשים'); }
         console.error('Error fetching filtered users:', err);
       } finally {
-        setLoading(false);
+        if (reqId === searchReqIdRef.current) {
+          setIsSearching(false);
+        }
       }
     };
 
-    // Debounce search to avoid too many requests - wait for user to finish typing
     const timeoutId = setTimeout(() => {
-      if (userSearch.trim() !== '') {
+      const q = userSearch.trim();
+      if (q === '') {
+        // Empty input resets the list without reloading programs
+        if (users.length === 0) {
+          fetchData();
+        } else {
+          fetchFilteredUsers();
+        }
+      } else {
+        // Fetch filtered users from server
         fetchFilteredUsers();
       }
-    }, 800);
+    }, 300);
 
     return () => clearTimeout(timeoutId);
   }, [userSearch, user?.userId]);
@@ -482,10 +530,19 @@ export function ProgramAssignmentSection() {
     );
   };
 
-  // Users are now filtered on the server side
-  const filteredUsers = users;
+  // Client-side filtering (name or email), case-insensitive
+  const filteredUsers = React.useMemo(() => {
+    const q = userSearch.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter((u) => {
+      const fullName = `${u.first_name || ''} ${u.last_name || ''}`.trim().toLowerCase();
+      const email = (u.email || '').toLowerCase();
+      return fullName.includes(q) || email.includes(q);
+    });
+  }, [users, userSearch]);
 
-  if (loading) {
+  const isInitialLoading = loading && users.length === 0;
+  if (isInitialLoading) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-8 text-center">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
@@ -524,7 +581,25 @@ export function ProgramAssignmentSection() {
           </div>
         )}
 
-        {users.length === 0 ? (
+        {/* User Search */}
+        <div className="relative mb-6">
+          {isSearching ? (
+            <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />
+          ) : (
+            <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          )}
+          <input
+            type="text"
+            placeholder="חפש משתמש לפי שם או אימייל"
+            value={userSearch}
+            onChange={(e) => { if (!isComposingRef.current) setUserSearch(e.target.value); }}
+            onCompositionStart={() => { isComposingRef.current = true; }}
+            onCompositionEnd={(e) => { isComposingRef.current = false; setUserSearch((e.target as HTMLInputElement).value); }}
+            className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
+          />
+        </div>
+
+        {filteredUsers.length === 0 ? (
           <div className="text-center py-8">
             <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">אין משתמשים</h3>
@@ -533,16 +608,22 @@ export function ProgramAssignmentSection() {
         ) : (
           <div className="space-y-6">
             {/* User Search */}
+            {false && (
             <div className="relative">
-              <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              {isSearching ? (
+                <RefreshCw className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5 animate-spin" />
+              ) : (
+                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+              )}
               <input
                 type="text"
                 placeholder="חיפוש משתמשים..."
                 value={userSearch}
-                onChange={(e) => setUserSearch(e.target.value)}
+                onChange={(e) => { if (!isComposingRef.current) setUserSearch(e.target.value); }}
                 className="w-full pr-10 pl-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-green-500 focus:border-transparent transition-all"
               />
             </div>
+            )}
 
             {/* Users Grid */}
             <div className="overflow-x-auto">
