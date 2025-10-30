@@ -1,5 +1,5 @@
 import React from 'react';
-import { ChevronDown, Building2, AlertCircle, RefreshCw } from 'lucide-react';
+import { ChevronDown, Building2, AlertCircle, RefreshCw, Search } from 'lucide-react';
 import { useAuthStore } from '@/stores/authStore';
 import { useProgramsStore } from '@/stores/programsStore';
 import { getProgramsByUserId } from '@/api/programs';
@@ -21,6 +21,8 @@ export function ProjectSelector() {
   const setProgramsError = useProgramsStore(s => s.setError);
 
   const [isOpen, setIsOpen] = React.useState(false);
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const searchInputRef = React.useRef<HTMLInputElement | null>(null);
 
   const loadedForUserRef = React.useRef<number | null>(null);
 
@@ -77,6 +79,15 @@ export function ProjectSelector() {
     };
   }, [user?.userId, setPrograms, setProgramsLoading, setProgramsError, setCurrentProgramId, programs.length, currentProgramId]);
 
+  // Focus the search input when opening; clear on close
+  React.useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => searchInputRef.current?.focus(), 0);
+    } else {
+      setSearchTerm('');
+    }
+  }, [isOpen]);
+
   const handleSelect = (programId: string) => {
     setCurrentProgramId(programId);
     setIsOpen(false);
@@ -95,6 +106,11 @@ export function ProjectSelector() {
   if (!user?.userId) return null;
 
   const currentProgram = programs.find(p => p.id === currentProgramId);
+  const filteredPrograms = React.useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    if (!term) return programs;
+    return programs.filter(p => p.name.toLowerCase().includes(term));
+  }, [programs, searchTerm]);
   const currentProgramName = currentProgram?.name || 'בחר פרויקט';
 
   return (
@@ -140,8 +156,23 @@ export function ProjectSelector() {
         <>
           <div className="fixed inset-0 z-10" onClick={() => setIsOpen(false)} />
           <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-lg z-20 overflow-hidden">
-            <div className="py-2">
-              {programs.map((program) => (
+            {/* Search */}
+            <div className="p-2 border-b border-gray-200">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  placeholder="חיפוש פרויקטים..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full pr-9 pl-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="py-2 max-h-64 overflow-y-auto">
+              {filteredPrograms.map((program) => (
                 <button
                   key={program.id}
                   onClick={() => handleSelect(program.id)}
