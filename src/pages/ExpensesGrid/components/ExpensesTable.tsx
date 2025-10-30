@@ -76,11 +76,25 @@ export function ExpensesTable({
     const base = (expensesApi.defaults.baseURL || '').replace(/\/$/, '');
     return `${base}/${expenseId}/files/${field}/${index}`;
   };
+  const buildDownloadAndSendUrl = (
+    expenseId: string,
+    field: 'invoice_file' | 'bank_details_file' | 'receipt_file',
+    index: number
+  ) => {
+    const base = (expensesApi.defaults.baseURL || '').replace(/\/$/, '');
+    const uid = user?.userId;
+    const qp = uid ? `?user_id=${encodeURIComponent(String(uid))}` : '';
+    return `${base}/${expenseId}/files/${field}/${index}/download-and-send${qp}`;
+  };
 
   // Handle file download to local computer
   const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
     try {
-      const url = buildRedirectUrl(expense.id, field, index);
+      if (!user?.userId) {
+        setError('Missing logged-in user. Please sign in again.');
+        return;
+      }
+      const url = buildDownloadAndSendUrl(expense.id, field, index);
 
       // Fetch the file as blob
       const response = await fetch(url);
@@ -110,7 +124,7 @@ export function ExpensesTable({
     } catch (error) {
       console.error('Download failed:', error);
       // Fallback to opening in new tab if download fails
-      window.open(buildRedirectUrl(expense.id, field, index), '_blank');
+      window.open(buildDownloadAndSendUrl(expense.id, field, index), '_blank');
     }
   };
 

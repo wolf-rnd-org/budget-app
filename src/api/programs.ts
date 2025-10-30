@@ -75,9 +75,15 @@ export async function getProgramsByUserId(userId: string | number): Promise<Prog
 // ---------------- NEW FUNCTION ----------------
 export interface ProgramSummary {
   program_id: string;
+  // Total budget should include base + extra + income
   total_budget: number;
   total_expenses: number;
   remaining_balance: number;
+  // Optional breakdown fields
+  base_budget?: number | null;
+  extra_budget?: number | null;
+  income?: number | null;
+  income_details?: string | null;
 }
 export async function getProgramSummary(
   programId: string | number
@@ -89,5 +95,5 @@ export async function getProgramSummary(
     headers: { Accept: 'application/json' },
   });
 
-  return response.data as ProgramSummary;
+    return response.data as ProgramSummary;
 }
