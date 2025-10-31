@@ -25,6 +25,24 @@ export function BudgetSummaryCards({
     ? Math.max(0, Math.round((remainingBalance / totalBudget) * 100))
     : 0;
 
+  // ערכים מנורמלים ובטוחים
+  const extraVal = Number(extraBudget) || 0;
+  const incomeVal = Number(income) || 0;
+  const baseVal = Number(baseBudget) || Number(totalBudget - (incomeVal + extraVal)) || 0;
+
+  // יחס הכנסות מול הוצאות למיקרו-בר
+  const denom = Math.max(0, incomeVal) + Math.max(0, totalExpenses);
+  const incomeSharePct = denom > 0 ? Math.round((Math.max(0, incomeVal) / denom) * 100) : 0;
+  const expenseSharePct = 100 - incomeSharePct;
+
+  // מצב מסגרת עדינה לכרטיס התקציב לפי מצב
+  const nearingLimit = totalBudget > 0 && remainingBalance <= totalBudget * 0.1 && remainingBalance >= 0;
+  const overrun = remainingBalance < 0;
+  const totalCardBorder =
+    overrun ? 'border-red-200'
+      : nearingLimit ? 'border-blue-200'
+        : 'border-gray-100';
+
   return (
     <>
       <style>{`
@@ -33,34 +51,96 @@ export function BudgetSummaryCards({
       `}</style>
 
       {/* Budget Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        {/* Total Budget */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
-          <div className="flex items-center gap-3 mb-3">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" dir="rtl">
+        {/* Total Budget — redesigned */}
+        <div className={`bg-white rounded-2xl p-5 shadow-sm border ${totalCardBorder} hover:shadow-md transition-shadow`}>
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-2">
             <div className="p-2 bg-blue-100 rounded-lg">
-              <Wallet className="w-6 h-6 text-blue-600" />
+              <Wallet className="w-6 h-6 text-blue-600" aria-hidden />
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">סה"כ תקציב</h3>
+            <h3 className="text-lg font-semibold text-gray-900">סה״כ תקציב</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalBudget)}</p>
-          {
-            <div className="mt-3 text-sm text-gray-700 space-y-1">
-              {Number(baseBudget) > 0 && <div>• תקציב בסיסי: {formatCurrency(Number(baseBudget))}</div>}
-              {Number(extraBudget) > 0 && <div>• תקציב חריגה: {formatCurrency(Number(extraBudget))}</div>}
-              {Number(income) > 0 && <div>• הכנסה: {formatCurrency(Number(income))}</div>}
+
+          {/* Breakdown mini-cards: בסיס + חריגה */}
+          <div className="sm:col-span-2 rounded-xl border border-green-100 bg-green-50 px-4 py-3 flex items-center justify-between mb-3">
+            <span className="text-gray-800 text-sm sm:text-base">תקציב בסיס</span>
+            <span className="font-semibold text-gray-900">{formatCurrency(baseVal)}</span>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center justify-between">
+              <span className="text-gray-800 text-sm sm:text-base">הכנסה נוספת</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(incomeVal)}</span>
             </div>
-         }
+
+            <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 flex items-center justify-between">
+              <span className="text-gray-800 text-sm sm:text-base">תקציב חריגה</span>
+              <span className="font-semibold text-gray-900">{formatCurrency(extraVal)}</span>
+            </div>
+
+          </div>
+
+
+
+          {/* Total line */}
+          <div className="mt-4 pt-3 border-t border-gray-200">
+            <div className="flex items-baseline justify-between">
+              <span className="text-gray-900 text-base sm:text-lg font-semibold">סה״כ תקציב זמין:</span>
+              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">
+                {formatCurrency(totalBudget)}
+              </span>
+            </div>
+          </div>
         </div>
 
         {/* Remaining Balance */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+        {/* Remaining Balance — משודרג */}
+        <div
+          className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 hover:shadow-md transition-shadow relative"
+          dir="rtl"
+          aria-labelledby="balance-card-title"
+        >
+          {/* תגית מצב בפינה שמאלית-עליונה */}
+          <span
+            className={`absolute top-3 left-3 inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium
+      ${remainingBalance < 0
+                ? 'bg-red-100 text-red-700'
+                : remainingBalance < totalBudget * 0.1
+                  ? 'bg-amber-100 text-amber-700'
+                  : 'bg-emerald-100 text-emerald-700'}`}
+            title={remainingBalance < 0 ? 'חריגה' : remainingBalance < totalBudget * 0.1 ? 'נמוך' : 'תקין'}
+          >
+            {remainingBalance < 0 ? 'חריגה' : remainingBalance < totalBudget * 0.1 ? 'נמוך' : 'תקין'}
+          </span>
+
+          {/* כותרת + אייקון עם טבעת התקדמות */}
           <div className="flex items-center gap-3 mb-3">
-            <div className={`p-2 rounded-lg ${remainingBalance < totalBudget * 0.1 ? 'bg-red-100' : 'bg-green-100'}`}>
-              <TrendingUp className={`w-6 h-6 ${remainingBalance < totalBudget * 0.1 ? 'text-red-600' : 'text-green-600'}`} />
+            <div className="relative">
+              {/* טבעת עגולה: מציגה אחוז נותר */}
+              <div
+                className="absolute inset-0 rounded-full"
+                style={{
+                  background: `conic-gradient(${remainingBalance >= 0 ? '#10b981' : '#ef4444'} ${Math.max(0, Math.min(100, percentLeft))}%, #e5e7eb 0)`,
+                  mask: 'radial-gradient(farthest-side, transparent 65%, black 66%)',
+                  WebkitMask: 'radial-gradient(farthest-side, transparent 65%, black 66%)',
+                }}
+                aria-hidden
+                title={`נותר ${Math.max(0, Math.min(100, percentLeft))}% מהתקציב`}
+              />
+              <div className={`relative p-2 rounded-lg ${remainingBalance < totalBudget * 0.1 ? 'bg-red-100' : 'bg-emerald-100'}`}>
+                <TrendingUp className={`w-6 h-6 ${remainingBalance < totalBudget * 0.1 ? 'text-red-600' : 'text-emerald-700'}`} />
+              </div>
             </div>
-            <h3 className="text-lg font-semibold text-gray-900">יתרה</h3>
+
+            <h3 id="balance-card-title" className="text-lg font-semibold text-gray-900">יתרה</h3>
           </div>
-          <p className={`text-3xl font-bold ${remainingBalance < totalBudget * 0.1 ? 'text-red-600' : 'text-green-600'}`}>
+
+          {/* סכום היתרה */}
+          <p
+            className={`text-3xl font-bold ${remainingBalance < totalBudget * 0.1 ? 'text-red-600' : 'text-emerald-700'}`}
+            style={{ fontVariantNumeric: 'tabular-nums' }}
+            title={formatCurrency(remainingBalance)}
+          >
             {formatCurrency(remainingBalance)}
           </p>
         </div>
@@ -75,10 +155,11 @@ export function BudgetSummaryCards({
           </div>
           <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalExpenses)}</p>
           <div className="mt-2">
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 rounded-full h-2" role="progressbar" aria-valuenow={Math.min(budgetUsedPercentage, 100)} aria-valuemin={0} aria-valuemax={100}>
               <div
-                className={`h-2 rounded-full transition-all duration-300 ${budgetUsedPercentage > 90 ? 'bg-red-500' :
-                  budgetUsedPercentage > 75 ? 'bg-amber-500' : 'bg-green-500'
+                className={`h-2 rounded-full transition-all duration-300 ${budgetUsedPercentage > 90 ? 'bg-red-500'
+                  : budgetUsedPercentage > 75 ? 'bg-amber-500'
+                    : 'bg-green-500'
                   }`}
                 style={{ width: `${Math.min(budgetUsedPercentage, 100)}%` }}
               />
