@@ -116,11 +116,40 @@ export function ExpensesTable({
       document.body.removeChild(link);
       window.URL.revokeObjectURL(downloadUrl);
 
+      void pollStatusUntilChanged(expense, { tries: 12, delayMs: 1500 });
+
+      // רענון חד-פעמי מהשרת אחרי 1.5ש' כדי למשוך את הסטטוס החדש (אם עודכן)
+      async function fetchExpenseStatus(expenseId: string): Promise<string | undefined> {
+        const res = await expensesApi.get(`/${expenseId}`);
+        const fresh = res.data;
+        return fresh?.fields?.status ?? fresh?.data?.fields?.status ?? fresh?.status;
+      }
+
+      async function pollStatusUntilChanged(expense: Expense, opts?: { tries?: number; delayMs?: number }) {
+        // פול רק אם כרגע NEW (השרת מקדם רק מזה)
+        if ((expense.status || '').toLowerCase() !== 'new') return;
+
+        const tries = opts?.tries ?? 12;      // ~18s
+        const delayMs = opts?.delayMs ?? 1500;
+
+        for (let i = 0; i < tries; i++) {
+          await new Promise(r => setTimeout(r, delayMs));
+          try {
+            const freshStatus = await fetchExpenseStatus(expense.id);
+            if (freshStatus && freshStatus !== expense.status) {
+              onExpenseStatusUpdate?.({ ...expense, status: freshStatus });
+              return;
+            }
+          } catch { /* שקט */ }
+        }
+      }
+
+
       // Update expense status after successful download
       // Only update status if onExpenseStatusUpdate callback is provided (admin view only)
-      if (onExpenseStatusUpdate) {
-        await updateExpenseStatus(expense.id, expense);
-      }
+      // if (onExpenseStatusUpdate) {
+      //   await updateExpenseStatus(expense.id, expense);
+      // }
     } catch (error) {
       console.error('Download failed:', error);
       // Fallback to opening in new tab if download fails
