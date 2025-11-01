@@ -52,35 +52,54 @@ export function BudgetSummaryCards({
 
       {/* Budget Summary Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8" dir="rtl">
-        {/* Total Budget — redesigned */}
-        <div className={`bg-white rounded-2xl p-5 shadow-sm border ${totalCardBorder} hover:shadow-md transition-shadow`}>
+        {/* Total Budget */}
+        <div className={`bg-white rounded-2xl p-5 shadow-sm border  border-gray-100 ${totalCardBorder} hover:shadow-md transition-shadow`}>
           {/* Header */}
-          <div className="flex items-center gap-3 mb-2">
+          <div className="flex items-center gap-3 mb-4">
             <div className="p-2 bg-blue-100 rounded-lg">
               <Wallet className="w-6 h-6 text-blue-600" aria-hidden />
             </div>
             <h3 className="text-lg font-semibold text-gray-900">סה״כ תקציב</h3>
           </div>
 
-          {/* Breakdown mini-cards: בסיס + חריגה */}
-          <div className="sm:col-span-2 rounded-xl border border-green-100 bg-green-50 px-4 py-3 flex items-center justify-between mb-3">
-            <span className="text-gray-800 text-sm sm:text-base">תקציב בסיס</span>
-            <span className="font-semibold text-gray-900">{formatCurrency(baseVal)}</span>
-          </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="rounded-xl border border-blue-100 bg-blue-50 px-4 py-3 flex items-center justify-between">
-              <span className="text-gray-800 text-sm sm:text-base">הכנסה נוספת</span>
-              <span className="font-semibold text-gray-900">{formatCurrency(incomeVal)}</span>
-            </div>
+          {/* Segments with percentages */}
+          {(() => {
+            const basePos = Math.max(0, baseVal);
+            const extPos = Math.max(0, extraVal);
+            const incPos = Math.max(0, incomeVal);
 
-            <div className="rounded-xl border border-amber-100 bg-amber-50 px-4 py-3 flex items-center justify-between">
-              <span className="text-gray-800 text-sm sm:text-base">תקציב חריגה</span>
-              <span className="font-semibold text-gray-900">{formatCurrency(extraVal)}</span>
-            </div>
+            // ריבועים: מציגים רק מי שערכו > 0
+            const boxes = [
+              { key: 'base', label: 'תקציב בסיס:', val: basePos, bg: 'bg-green-50', border: 'border-green-200' },
+              { key: 'extra', label: 'תקציב חריגה:', val: extPos, bg: 'bg-amber-50', border: 'border-amber-200' },
+              { key: 'income', label: 'הכנסה נוספת:', val: incPos, bg: 'bg-blue-50', border: 'border-blue-200' },
+            ].filter(b => b.val > 0);
 
-          </div>
-
-
+            return (
+              <div className="mb-4">
+                <div className="grid grid-cols-1 xs:grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                  {boxes.map(({ key, label, val, bg, border }) => (
+                    <div
+                      key={key}
+                      className={`rounded-lg border ${border} ${bg} px-2 py-1.5 sm:px-3 sm:py-2 flex items-center justify-center text-center`}
+                      title={`${label} ${formatCurrency(val)}`}
+                      aria-label={`${label} ${formatCurrency(val)}`}
+                    >
+                      <div className="flex items-center gap-0.5 flex-wrap min-w-0">
+                        <span className="text-[13px] sm:text-[12px] font-medium text-gray-700 whitespace-nowrap shrink-0 leading-tight">
+                          {label}
+                        </span>
+                        <span className="text-[13px] sm:text-[12px] font-semibold text-gray-900 whitespace-nowrap leading-tight">
+                          {formatCurrency(val)}
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+          
+              </div>
+            );
+          })()}
 
           {/* Total line */}
           <div className="mt-4 pt-3 border-t border-gray-200">
