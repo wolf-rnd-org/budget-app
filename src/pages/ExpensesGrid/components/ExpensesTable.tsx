@@ -76,86 +76,159 @@ export function ExpensesTable({
     const base = (expensesApi.defaults.baseURL || '').replace(/\/$/, '');
     return `${base}/${expenseId}/files/${field}/${index}`;
   };
+  // 1) החלף/הוסף פונקציה שמחזירה האם התקדם סטטוס
+  const advanceStatusIfNew = async (expense: Expense): Promise<boolean> => {
+    const current = (expense.status || '').toLowerCase();
+    if (current !== 'new') return false; // לא מנסה לקדם אם לא NEW
+
+    try {
+      const res = await expensesApi.patch(`/${expense.id}/status`, {
+        status: expense.status, // לפי ה־API הקיים שלך: השרת בודק התאמה ומקדם
+      });
+
+      const next =
+        res.data?.statusChange?.to ||
+        res.data?.data?.fields?.status ||
+        expense.status;
+
+      if (onExpenseStatusUpdate && next) {
+        onExpenseStatusUpdate({ ...expense, status: next });
+      }
+
+      // קידום נחשב הצלחה אם השתנה מ-NEW למשהו אחר
+      return current === 'new' && String(next || '').toLowerCase() !== 'new';
+    } catch (err) {
+      console.error('Failed to advance status:', err);
+      return false; // כישלון בקידום לא חוסם הורדה; יגרום לשליחה בלי דוא"ל
+    }
+  };
   const buildDownloadAndSendUrl = (
     expenseId: string,
     field: 'invoice_file' | 'bank_details_file' | 'receipt_file',
-    index: number
+    index: number,
+    opts?: { advanced?: boolean }
+
   ) => {
     const base = (expensesApi.defaults.baseURL || '').replace(/\/$/, '');
     const uid = user?.userId;
-    const qp = uid ? `?user_id=${encodeURIComponent(String(uid))}` : '';
-    return `${base}/${expenseId}/files/${field}/${index}/download-and-send${qp}`;
+    const qp = new URLSearchParams();
+    if (user?.userId) qp.set('user_id', String(user.userId));
+    if (typeof opts?.advanced === 'boolean') qp.set('advanced', opts.advanced ? '1' : '0');
+    const qs = qp.toString();
+    return `${base}/${expenseId}/files/${field}/${index}/download-and-send${qs ? `?${qs}` : ''}`;
   };
 
   // Handle file download to local computer
-  const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
-    try {
-      if (!user?.userId) {
-        setError('Missing logged-in user. Please sign in again.');
-        return;
-      }
-      const url = buildDownloadAndSendUrl(expense.id, field, index);
-
-      // Fetch the file as blob
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Download failed');
-
-      const blob = await response.blob();
-
-      // Create download link
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement('a');
-      link.href = downloadUrl;
-      link.download = fileName || `${field}_${expense.id}_${index + 1}`;
-
-      // Trigger download
-      document.body.appendChild(link);
-      link.click();
-
-      // Cleanup
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(downloadUrl);
-
-      void pollStatusUntilChanged(expense, { tries: 12, delayMs: 1500 });
-
-      // רענון חד-פעמי מהשרת אחרי 1.5ש' כדי למשוך את הסטטוס החדש (אם עודכן)
-      async function fetchExpenseStatus(expenseId: string): Promise<string | undefined> {
-        const res = await expensesApi.get(`/${expenseId}`);
-        const fresh = res.data;
-        return fresh?.fields?.status ?? fresh?.data?.fields?.status ?? fresh?.status;
-      }
-
-      async function pollStatusUntilChanged(expense: Expense, opts?: { tries?: number; delayMs?: number }) {
-        // פול רק אם כרגע NEW (השרת מקדם רק מזה)
-        if ((expense.status || '').toLowerCase() !== 'new') return;
-
-        const tries = opts?.tries ?? 12;      // ~18s
-        const delayMs = opts?.delayMs ?? 1500;
-
-        for (let i = 0; i < tries; i++) {
-          await new Promise(r => setTimeout(r, delayMs));
-          try {
-            const freshStatus = await fetchExpenseStatus(expense.id);
-            if (freshStatus && freshStatus !== expense.status) {
-              onExpenseStatusUpdate?.({ ...expense, status: freshStatus });
-              return;
-            }
-          } catch { /* שקט */ }
-        }
-      }
-
-
-      // Update expense status after successful download
-      // Only update status if onExpenseStatusUpdate callback is provided (admin view only)
-      // if (onExpenseStatusUpdate) {
-      //   await updateExpenseStatus(expense.id, expense);
-      // }
-    } catch (error) {
-      console.error('Download failed:', error);
-      // Fallback to opening in new tab if download fails
-      window.open(buildDownloadAndSendUrl(expense.id, field, index), '_blank');
+  const handleFileDownload = async (
+  expense: Expense,
+  field: 'invoice_file' | 'bank_details_file' | 'receipt_file',
+  index: number,
+  fileName: string
+) => {
+  try {
+    if (!user?.userId) {
+      setError('Missing logged-in user. Please sign in again.');
+      return;
     }
-  };
+
+    // 1) הורדה קודם כל (ללא קידום סטטוס)
+    const downloadUrlApi = buildDownloadAndSendUrl(expense.id, field, index, { advanced: false });
+    const response = await fetch(downloadUrlApi);
+    if (!response.ok) throw new Error('Download failed');
+    const blob = await response.blob();
+
+    // הורדה לדפדפן
+    const objectUrl = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = objectUrl;
+    link.download = fileName || `${field}_${expense.id}_${index + 1}`;
+    document.body.appendChild(link);
+    link.click();    document.body.removeChild(link);
+    window.URL.revokeObjectURL(objectUrl);
+
+    // 2) עכשיו מקדמים סטטוס (אם היה NEW)
+    await advanceStatusIfNew(expense);
+
+    // 3) טריגר לשליחת מייל ברקע — לא תנאי לקידום, ללא await
+    fetch(buildDownloadAndSendUrl(expense.id, field, index, { advanced: true }))
+      .catch(() => {/* נרמז/התעלמות שקטה */});
+
+  } catch (error) {
+    console.error('Download failed:', error);
+    // Fallback: פתיחה בטאב חדש אם כשל
+    window.open(buildDownloadAndSendUrl(expense.id, field, index), '_blank');
+  }
+};
+ //clean after tests in the prodaction
+  // const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
+  //   try {
+  //     if (!user?.userId) {
+  //       setError('Missing logged-in user. Please sign in again.');
+  //       return;
+  //     }
+  //     const advanced = await advanceStatusIfNew(expense);
+  //     const url = buildDownloadAndSendUrl(expense.id, field, index, { advanced });
+
+  //     // Fetch the file as blob
+  //     const response = await fetch(url);
+  //     if (!response.ok) throw new Error('Download failed');
+
+  //     const blob = await response.blob();
+
+  //     // Create download link
+  //     const downloadUrl = window.URL.createObjectURL(blob);
+  //     const link = document.createElement('a');
+  //     link.href = downloadUrl;
+  //     link.download = fileName || `${field}_${expense.id}_${index + 1}`;
+
+  //     // Trigger download
+  //     document.body.appendChild(link);
+  //     link.click();
+
+  //     // Cleanup
+  //     document.body.removeChild(link);
+  //     window.URL.revokeObjectURL(downloadUrl);
+
+  //     // void pollStatusUntilChanged(expense, { tries: 12, delayMs: 1500 });
+
+  //     // // רענון חד-פעמי מהשרת אחרי 1.5ש' כדי למשוך את הסטטוס החדש (אם עודכן)
+  //     // async function fetchExpenseStatus(expenseId: string): Promise<string | undefined> {
+  //     //   const res = await expensesApi.get(`/${expenseId}`);
+  //     //   const fresh = res.data;
+  //     //   return fresh?.fields?.status ?? fresh?.data?.fields?.status ?? fresh?.status;
+  //     // }
+
+  //     // async function pollStatusUntilChanged(expense: Expense, opts?: { tries?: number; delayMs?: number }) {
+  //     //   // פול רק אם כרגע NEW (השרת מקדם רק מזה)
+  //     //   if ((expense.status || '').toLowerCase() !== 'new') return;
+
+  //     //   const tries = opts?.tries ?? 12;      // ~18s
+  //     //   const delayMs = opts?.delayMs ?? 1500;
+
+  //     //   for (let i = 0; i < tries; i++) {
+  //     //     await new Promise(r => setTimeout(r, delayMs));
+  //     //     try {
+  //     //       const freshStatus = await fetchExpenseStatus(expense.id);
+  //     //       if (freshStatus && freshStatus !== expense.status) {
+  //     //         onExpenseStatusUpdate?.({ ...expense, status: freshStatus });
+  //     //         return;
+  //     //       }
+  //     //     } catch { /* שקט */ }
+  //     //   }
+  //     // }
+
+
+  //     // Update expense status after successful download
+  //     // Only update status if onExpenseStatusUpdate callback is provided (admin view only)
+  //     // if (onExpenseStatusUpdate) {
+  //     //   await updateExpenseStatus(expense.id, expense);
+  //     // }
+  //   } catch (error) {
+  //     console.error('Download failed:', error);
+  //     // Fallback to opening in new tab if download fails
+  //     window.open(buildDownloadAndSendUrl(expense.id, field, index), '_blank');
+  //   }
+  // };
 
   // Update expense status - server decides next status based on current status
   const updateExpenseStatus = async (expenseId: string, currentExpense: Expense) => {
