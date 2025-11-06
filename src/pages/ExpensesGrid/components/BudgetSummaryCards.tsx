@@ -105,7 +105,7 @@ export function BudgetSummaryCards({
           <div className="mt-4 pt-3 border-t border-gray-200">
             <div className="flex items-baseline justify-between">
               <span className="text-gray-900 text-base sm:text-lg font-semibold">סה״כ תקציב זמין:</span>
-              <span className="text-3xl sm:text-4xl font-extrabold tracking-tight text-gray-900">
+              <span className="text-3xl sm:text-3xl font-bold tracking-tight text-gray-900">
                 {formatCurrency(totalBudget)}
               </span>
             </div>
