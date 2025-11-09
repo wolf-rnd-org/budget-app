@@ -551,15 +551,25 @@ export function ExpensesTable({
               <React.Fragment key={expense.id}>
                 <tr
                   onClick={() => onRowClick(expense.id)}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${expense.priority === 'urgent'
-                    ? 'bg-red-50 border-l-4 border-red-500'
-                    : ''
-                    }`}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
+                    expense.priority === 'urgent'
+                      ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'ring-1 ring-red-200')
+                      : ''
+                  }`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       {expense.priority === 'urgent' && (
-                        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                        (showDownloadColumn || showProgramColumn)
+                          ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
+                              דחוף
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                              דחוף
+                            </span>
+                          )
                       )}
                       <div className="font-medium text-gray-900">{expense.supplier_name}</div>
                     </div>
@@ -631,8 +641,9 @@ export function ExpensesTable({
                           </span>
                         )}
                       </div>
+                      {!(showDownloadColumn || showProgramColumn) && (
                       <div className="relative group ml-auto">
-                        {/* <button
+                        <button
                           onClick={(e) => handleMarkUrgent(expense, e)}
                           className={`p-2 rounded-lg transition-all ${
                             expense.priority === 'urgent'
@@ -643,17 +654,17 @@ export function ExpensesTable({
                         >
                           <AlertTriangle className="w-4 h-4" />
                         </button>
-                         */}
+                        
                         {/* Tooltip */}
-                        {/* <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                           {expense.priority === 'urgent' 
                             ? 'הסר דחיפות' 
                             : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
                           }
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div> */}
+                        </div>
                       </div>
-
+                      )}
 
                       <button
                         onClick={(e) => onEdit(expense, e)}
