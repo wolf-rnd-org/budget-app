@@ -553,7 +553,7 @@ export function ExpensesTable({
                   onClick={() => onRowClick(expense.id)}
                   className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
                     expense.priority === 'urgent'
-                      ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'ring-1 ring-red-200')
+                      ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'bg-red-50 border-l-4 border-red-500')
                       : ''
                   }`}
                 >
@@ -566,7 +566,7 @@ export function ExpensesTable({
                               דחוף
                             </span>
                           ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-100 text-red-700 border border-red-200">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
                               דחוף
                             </span>
                           )
