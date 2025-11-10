@@ -1,9 +1,10 @@
 ﻿import React from 'react';
-import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download } from 'lucide-react';
+import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
 import { expensesApi, isMockMode } from '@/api/http';
+import { uploadExpenseReceipt } from '@/api/receipts';
 
 interface ExpensesTableProps {
   onEdit: (expense: Expense, event: React.MouseEvent) => void;
@@ -30,6 +31,8 @@ interface ExpensesTableProps {
   showDownloadColumn?: boolean;
   // Callback when expense status is updated
   onExpenseStatusUpdate?: (expense: Expense) => void;
+  // Callback when an expense object is updated (e.g., after receipt upload)
+  onExpenseUpdated?: (expense: Expense) => void;
 }
 
 export function ExpensesTable({
@@ -53,11 +56,14 @@ export function ExpensesTable({
   onLoadMore,
   showProgramColumn = false,
   showDownloadColumn = false,
-  onExpenseStatusUpdate
+  onExpenseStatusUpdate,
+  onExpenseUpdated
 }: ExpensesTableProps) {
   const { user } = useAuthStore();
   const [error, setError] = React.useState<string | null>(null);
   const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
+  const [uploadingId, setUploadingId] = React.useState<string | null>(null);
+  const [uploadErrors, setUploadErrors] = React.useState<Record<string, string>>({});
 
   // Helpers to handle file download links from server
   const normalizeFiles = (files: any): { url: string; name?: string }[] => {
@@ -288,12 +294,59 @@ export function ExpensesTable({
             );
           });
         })}
+        {
+          // Fallback: show a receipt button even if attachments array is missing in list API
+          (normalizeFiles((expense as any).receipt_file).length === 0 &&
+            (String(expense.status || '').toLowerCase() === 'receipt_uploaded' || Boolean((expense as any).has_receipt))) && (
+              <button
+                key={`receipt_file-0-fallback`}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const fileName = `קבלה_${expense.supplier_name}_${expense.id}`;
+                  handleFileDownload(expense, 'receipt_file', 0, fileName);
+                }}
+                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs hover:bg-blue-50 px-1 py-0.5 rounded transition-colors"
+              >
+                <Download className="w-3 h-3" />
+                קבלה
+              </button>
+            )
+        }
       </div>
     );
   };
 
   const onRowClick = (expenseId: string) => {
     setExpandedRow(expandedRow === expenseId ? null : expenseId);
+  };
+
+  const handleReceiptUploadChange = async (
+    event: React.ChangeEvent<HTMLInputElement>,
+    currentExpense: Expense
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (file.size > 10 * 1024 * 1024) {
+      setUploadErrors((prev) => ({ ...prev, [currentExpense.id]: 'הקובץ גדול מדי (מקסימום 10MB)' }));
+      event.target.value = '';
+      return;
+    }
+    try {
+      setUploadingId(currentExpense.id);
+      setUploadErrors((prev) => {
+        const next = { ...prev };
+        delete next[currentExpense.id];
+        return next;
+      });
+      const updated = await uploadExpenseReceipt(currentExpense, file);
+      onExpenseUpdated?.(updated);
+    } catch (e) {
+      console.error('Receipt upload failed', e);
+      setUploadErrors((prev) => ({ ...prev, [currentExpense.id]: 'העלאת קבלה נכשלה. נסו שוב.' }));
+    } finally {
+      setUploadingId(null);
+      event.target.value = '';
+    }
   };
   const updatingUrgentIds = React.useRef<Set<string>>(new Set());
 
@@ -498,15 +551,25 @@ export function ExpensesTable({
               <React.Fragment key={expense.id}>
                 <tr
                   onClick={() => onRowClick(expense.id)}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${expense.priority === 'urgent'
-                    ? 'bg-red-50 border-l-4 border-red-500'
-                    : ''
-                    }`}
+                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
+                    expense.priority === 'urgent'
+                      ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'bg-red-50 border-l-4 border-red-500')
+                      : ''
+                  }`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       {expense.priority === 'urgent' && (
-                        <AlertTriangle className="w-4 h-4 text-red-600 flex-shrink-0" />
+                        (showDownloadColumn || showProgramColumn)
+                          ? (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
+                              דחוף
+                            </span>
+                          ) : (
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
+                              דחוף
+                            </span>
+                          )
                       )}
                       <div className="font-medium text-gray-900">{expense.supplier_name}</div>
                     </div>
@@ -538,9 +601,49 @@ export function ExpensesTable({
                     </td>
                   )}
                   <td className="px-6 py-4">
-                    <div className="flex items-center justify-center gap-2">
-                      <div className="relative group">
-                        {/* <button
+                    <div className="flex items-center gap-2 w-full">
+                      {/* Left slot to keep actions aligned across rows */}
+                      <div className="flex items-center justify-start min-w-[84px]">
+                        {((expense.status || '').toLowerCase() === 'sent_for_payment') && !showDownloadColumn ? (
+                          <>
+                            <input
+                              id={`receipt-upload-inline-${expense.id}`}
+                              type="file"
+                              accept=".pdf,.jpg,.jpeg,.png"
+                              className="hidden"
+                              onChange={(e) => handleReceiptUploadChange(e, expense)}
+                              disabled={uploadingId === expense.id}
+                            />
+                            <label
+                              htmlFor={`receipt-upload-inline-${expense.id}`}
+                              onClick={(e) => e.stopPropagation()}
+                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all border whitespace-nowrap shrink-0 ${uploadingId === expense.id
+                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                : 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 hover:border-indigo-400 ring-1 ring-inset ring-indigo-100'}
+                              `}
+                            >
+                              {uploadingId === expense.id ? (
+                                <span className="inline-flex items-center gap-1">
+                                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></span>
+                                  מעלה
+                                </span>
+                              ) : (
+                                <>
+                                  <Upload className="w-3 h-3" />
+                                  קבלה
+                                </>
+                              )}
+                            </label>
+                          </>
+                        ) : (
+                          <span aria-hidden className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-transparent opacity-0 select-none">
+                            קבלה
+                          </span>
+                        )}
+                      </div>
+                      {!(showDownloadColumn || showProgramColumn) && (
+                      <div className="relative group ml-auto">
+                        <button
                           onClick={(e) => handleMarkUrgent(expense, e)}
                           className={`p-2 rounded-lg transition-all ${
                             expense.priority === 'urgent'
@@ -551,17 +654,17 @@ export function ExpensesTable({
                         >
                           <AlertTriangle className="w-4 h-4" />
                         </button>
-                         */}
+                        
                         {/* Tooltip */}
-                        {/* <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
                           {expense.priority === 'urgent' 
                             ? 'הסר דחיפות' 
                             : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
                           }
                           <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div> */}
+                        </div>
                       </div>
-
+                      )}
 
                       <button
                         onClick={(e) => onEdit(expense, e)}
@@ -601,6 +704,43 @@ export function ExpensesTable({
                         </div>
 
                         <div className="bg-white rounded-lg p-6 shadow-sm">
+                          {/* Prominent Receipt Upload Banner inside expanded row */}
+                          {((expense.status || '').toLowerCase() === 'sent_for_payment') && (
+                            <div className="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                              <div className="text-amber-900 font-medium">
+                                הועבר לתשלום - העלו קבלה כדי להשלים את התהליך
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <input
+                                  id={`receipt-upload-${expense.id}`}
+                                  type="file"
+                                  accept=".pdf,.jpg,.jpeg,.png"
+                                  className="hidden"
+                                  onChange={(e) => handleReceiptUploadChange(e, expense)}
+                                  disabled={uploadingId === expense.id}
+                                />
+                                <label
+                                  htmlFor={`receipt-upload-${expense.id}`}
+                                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium cursor-pointer transition-all ${uploadingId === expense.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                >
+                                  {uploadingId === expense.id ? (
+                                    <span className="inline-flex items-center gap-2">
+                                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                      מעלה קבלה...
+                                    </span>
+                                  ) : (
+                                    <>
+                                      <Upload className="w-4 h-4" />
+                                      העלאת קבלה
+                                    </>
+                                  )}
+                                </label>
+                              </div>
+                            </div>
+                          )}
+                          {uploadErrors[expense.id] && expandedRow === expense.id && (
+                            <div className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{uploadErrors[expense.id]}</div>
+                          )}
                           {/* Basic Details Section */}
                           <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
                             <div className="flex justify-between items-center py-2 border-b border-gray-100">
@@ -714,6 +854,43 @@ export function ExpensesTable({
                                   פרטי בנק
                                 </a>
                               )}
+
+                              {(normalizeFiles as any)(expense.receipt_file).length > 0 && (
+                                <a
+                                  href={Array.isArray(expense.receipt_file)
+                                    ? (isMockMode()
+                                      ? (typeof (expense.receipt_file as any)[0] === 'string'
+                                        ? (expense.receipt_file as any)[0]
+                                        : ((expense.receipt_file as any)[0]?.url || ''))
+                                      : buildRedirectUrl(expense.id, 'receipt_file', 0))
+                                    : (typeof expense.receipt_file === 'string'
+                                      ? expense.receipt_file
+                                      : ((expense.receipt_file as any)?.url || ''))}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                >
+                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  קבלה
+                                </a>
+                              )}
+
+                              {(normalizeFiles as any)(expense.receipt_file).length === 0 &&
+                                (String(expense.status || '').toLowerCase() === 'receipt_uploaded' || Boolean((expense as any).has_receipt)) && (
+                                  <a
+                                    href={buildRedirectUrl(expense.id, 'receipt_file', 0)}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2 2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                    </svg>
+                                    קבלה
+                                  </a>
+                                )}
                             </div>
                           </div>
                         </div>
