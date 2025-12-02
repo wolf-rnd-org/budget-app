@@ -582,6 +582,7 @@ export function RegularExpensesView() {
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={loadMoreExpenses}
+          onExpenseUpdated={handleExpenseUpdated}
         />
 
         <Outlet />
