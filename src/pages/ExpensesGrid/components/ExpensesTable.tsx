@@ -65,6 +65,13 @@ export function ExpensesTable({
   const [uploadingId, setUploadingId] = React.useState<string | null>(null);
   const [uploadErrors, setUploadErrors] = React.useState<Record<string, string>>({});
 
+  // Treat urgent styling as inactive once the expense is sent for payment (and beyond)
+  const isUrgentStyled = (expense: Expense) => {
+    const status = String(expense.status || '').toLowerCase();
+    const suppressed = new Set(['sent_for_payment', 'paid', 'closed']);
+    return String(expense.priority || '').toLowerCase() === 'urgent' && !suppressed.has(status);
+  };
+
   // Helpers to handle file download links from server
   const normalizeFiles = (files: any): { url: string; name?: string }[] => {
     if (!files) return [];
@@ -552,14 +559,14 @@ export function ExpensesTable({
                 <tr
                   onClick={() => onRowClick(expense.id)}
                   className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
-                    expense.priority === 'urgent'
+                    isUrgentStyled(expense)
                       ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'bg-red-50 border-l-4 border-red-500')
                       : ''
                   }`}
                 >
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
-                      {expense.priority === 'urgent' && (
+                      {isUrgentStyled(expense) && (
                         (showDownloadColumn || showProgramColumn)
                           ? (
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
@@ -646,7 +653,7 @@ export function ExpensesTable({
                         <button
                           onClick={(e) => handleMarkUrgent(expense, e)}
                           className={`p-2 rounded-lg transition-all ${
-                            expense.priority === 'urgent'
+                            isUrgentStyled(expense)
                               ? 'text-red-600 bg-red-50 hover:bg-red-100'
                               : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
                           }`}
