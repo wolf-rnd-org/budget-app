@@ -1,7 +1,7 @@
 export type Money = number;
 
 export type BaseExpensePayload = {
-  type: 'petty_cash' | 'salary' | 'check';
+  type: 'petty_cash' | 'salary' | 'check' | 'expected';
   categoryId?: string | number | null;
 };
 
@@ -29,7 +29,13 @@ export type CheckPayload = BaseExpensePayload & {
   memo?: string;
 };
 
-export type MoreActionsPayload = PettyCashPayload | SalaryPayload | CheckPayload;
+export type ExpectedExpensePayload = {
+  type: 'expected';
+  name: string;
+  amount: Money;
+};
+
+export type MoreActionsPayload = PettyCashPayload | SalaryPayload | CheckPayload | ExpectedExpensePayload;
 
 export type CategoryOption = {
   id: string | number;

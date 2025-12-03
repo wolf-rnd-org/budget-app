@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import PettyCashDialog from './PettyCashDialog';
 import SalaryDialog from './SalaryDialog';
 import CheckDialog from './CheckDialog';
+import ExpectedExpenseDialog from './ExpectedExpenseDialog';
 import type { CategoryOption, MoreActionsPayload } from './types';
 
 type Props = {
@@ -19,11 +20,13 @@ export default function MoreActionsButton({ categories = [], onSubmit, buttonLab
   const [pettyOpen, setPettyOpen] = useState(false);
   const [salaryOpen, setSalaryOpen] = useState(false);
   const [checkOpen, setCheckOpen] = useState(false);
+  const [expectedOpen, setExpectedOpen] = useState(false);
 
   const menuItems = useMemo(
     () => [
       { key: 'petty', label: 'קופה קטנה', onClick: () => setPettyOpen(true) },
       { key: 'salary', label: 'דיווח שכר', onClick: () => setSalaryOpen(true) },
+      { key: 'expected', label: 'הוצאה צפויה', onClick: () => setExpectedOpen(true) },
       // { key: 'check', label: 'צ׳ק', onClick: () => setCheckOpen(true) },
     ],
     []
@@ -73,6 +76,13 @@ export default function MoreActionsButton({ categories = [], onSubmit, buttonLab
         open={salaryOpen}
         categories={categories}
         onClose={() => setSalaryOpen(false)}
+        onSubmit={async (p) => {
+          try { await onSubmit(p); } catch (e) { throw e; }
+        }}
+      />
+      <ExpectedExpenseDialog
+        open={expectedOpen}
+        onClose={() => setExpectedOpen(false)}
         onSubmit={async (p) => {
           try { await onSubmit(p); } catch (e) { throw e; }
         }}
