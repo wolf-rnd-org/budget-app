@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload } from 'lucide-react';
+import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload, XCircle } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -71,6 +71,7 @@ export function ExpensesTable({
     const suppressed = new Set(['sent_for_payment', 'paid', 'closed']);
     return String(expense.priority || '').toLowerCase() === 'urgent' && !suppressed.has(status);
   };
+  const isRejected = (expense: Expense) => String(expense.status || '').toLowerCase() === 'rejected';
 
   // Helpers to handle file download links from server
   const normalizeFiles = (files: any): { url: string; name?: string }[] => {
@@ -133,46 +134,46 @@ export function ExpensesTable({
 
   // Handle file download to local computer
   const handleFileDownload = async (
-  expense: Expense,
-  field: 'invoice_file' | 'bank_details_file' | 'receipt_file',
-  index: number,
-  fileName: string
-) => {
-  try {
-    if (!user?.userId) {
-      setError('Missing logged-in user. Please sign in again.');
-      return;
+    expense: Expense,
+    field: 'invoice_file' | 'bank_details_file' | 'receipt_file',
+    index: number,
+    fileName: string
+  ) => {
+    try {
+      if (!user?.userId) {
+        setError('Missing logged-in user. Please sign in again.');
+        return;
+      }
+
+      // 1) הורדה קודם כל (ללא קידום סטטוס)
+      const downloadUrlApi = buildDownloadAndSendUrl(expense.id, field, index, { advanced: false });
+      const response = await fetch(downloadUrlApi);
+      if (!response.ok) throw new Error('Download failed');
+      const blob = await response.blob();
+
+      // הורדה לדפדפן
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = objectUrl;
+      link.download = fileName || `${field}_${expense.id}_${index + 1}`;
+      document.body.appendChild(link);
+      link.click(); document.body.removeChild(link);
+      window.URL.revokeObjectURL(objectUrl);
+
+      // 2) עכשיו מקדמים סטטוס (אם היה NEW)
+      await advanceStatusIfNew(expense);
+
+      // 3) טריגר לשליחת מייל ברקע — לא תנאי לקידום, ללא await
+      fetch(buildDownloadAndSendUrl(expense.id, field, index, { advanced: true }))
+        .catch(() => {/* נרמז/התעלמות שקטה */ });
+
+    } catch (error) {
+      console.error('Download failed:', error);
+      // Fallback: פתיחה בטאב חדש אם כשל
+      window.open(buildDownloadAndSendUrl(expense.id, field, index), '_blank');
     }
-
-    // 1) הורדה קודם כל (ללא קידום סטטוס)
-    const downloadUrlApi = buildDownloadAndSendUrl(expense.id, field, index, { advanced: false });
-    const response = await fetch(downloadUrlApi);
-    if (!response.ok) throw new Error('Download failed');
-    const blob = await response.blob();
-
-    // הורדה לדפדפן
-    const objectUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = objectUrl;
-    link.download = fileName || `${field}_${expense.id}_${index + 1}`;
-    document.body.appendChild(link);
-    link.click();    document.body.removeChild(link);
-    window.URL.revokeObjectURL(objectUrl);
-
-    // 2) עכשיו מקדמים סטטוס (אם היה NEW)
-    await advanceStatusIfNew(expense);
-
-    // 3) טריגר לשליחת מייל ברקע — לא תנאי לקידום, ללא await
-    fetch(buildDownloadAndSendUrl(expense.id, field, index, { advanced: true }))
-      .catch(() => {/* נרמז/התעלמות שקטה */});
-
-  } catch (error) {
-    console.error('Download failed:', error);
-    // Fallback: פתיחה בטאב חדש אם כשל
-    window.open(buildDownloadAndSendUrl(expense.id, field, index), '_blank');
-  }
-};
- //clean after tests in the prodaction
+  };
+  //clean after tests in the prodaction
   // const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
   //   try {
   //     if (!user?.userId) {
@@ -305,19 +306,19 @@ export function ExpensesTable({
           // Fallback: show a receipt button even if attachments array is missing in list API
           (normalizeFiles((expense as any).receipt_file).length === 0 &&
             (String(expense.status || '').toLowerCase() === 'receipt_uploaded' || Boolean((expense as any).has_receipt))) && (
-              <button
-                key={`receipt_file-0-fallback`}
-                onClick={(e) => {
-                  e.stopPropagation();
-                  const fileName = `קבלה_${expense.supplier_name}_${expense.id}`;
-                  handleFileDownload(expense, 'receipt_file', 0, fileName);
-                }}
-                className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs hover:bg-blue-50 px-1 py-0.5 rounded transition-colors"
-              >
-                <Download className="w-3 h-3" />
-                קבלה
-              </button>
-            )
+            <button
+              key={`receipt_file-0-fallback`}
+              onClick={(e) => {
+                e.stopPropagation();
+                const fileName = `קבלה_${expense.supplier_name}_${expense.id}`;
+                handleFileDownload(expense, 'receipt_file', 0, fileName);
+              }}
+              className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs hover:bg-blue-50 px-1 py-0.5 rounded transition-colors"
+            >
+              <Download className="w-3 h-3" />
+              קבלה
+            </button>
+          )
         }
       </div>
     );
@@ -455,6 +456,8 @@ export function ExpensesTable({
         return 'bg-sky-100 text-sky-800 border-sky-200';
       case 'closed':
         return 'bg-gray-200 text-gray-800 border-gray-300';
+      case 'rejected':
+        return 'bg-gray-200 text-gray-700 border-gray-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -476,6 +479,8 @@ export function ExpensesTable({
         return 'קופה קטנה';
       case 'salary':
         return 'דיווח שכר';
+      case 'rejected':
+        return 'נדחה';
       default:
         return status;
     }
@@ -559,9 +564,9 @@ export function ExpensesTable({
                 <tr
                   onClick={() => onRowClick(expense.id)}
                   className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
-                    isUrgentStyled(expense)
-                      ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'bg-red-50 border-l-4 border-red-500')
-                      : ''
+                    isRejected(expense)
+                      ? 'bg-gray-50 border-l-4 border-gray-300 opacity-80'
+                      : (isUrgentStyled(expense) ? 'bg-red-50 border-l-4 border-red-500' : '')
                   }`}
                 >
                   <td className="px-6 py-4">
@@ -578,15 +583,21 @@ export function ExpensesTable({
                             </span>
                           )
                       )}
-                      <div className="font-medium text-gray-900">{expense.supplier_name}</div>
+                      {isRejected(expense) && (
+                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-200 text-gray-700 border border-gray-300">
+                          <XCircle className="w-3 h-3" />
+                          נדחה • לא ישולם
+                        </span>
+                      )}
+                      <div className={`font-medium ${isRejected(expense) ? 'text-gray-500' : 'text-gray-900'}`}>{expense.supplier_name}</div>
                     </div>
-                    <div className="text-sm text-gray-500">{expense.invoice_description}</div>
+                    <div className={`text-sm ${isRejected(expense) ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{expense.invoice_description}</div>
                   </td>
                   <td className="px-6 py-4 text-gray-700">
                     {new Date(expense.date).toLocaleDateString('he-IL')}
                   </td>
                   <td className="px-6 py-4">
-                    <span className="font-semibold text-gray-900">
+                    <span className={`font-semibold ${isRejected(expense) ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                       {formatCurrency(expense.amount)}
                     </span>
                   </td>
@@ -594,6 +605,9 @@ export function ExpensesTable({
                     <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(expense.status)}`}>
                       {getStatusText(expense.status)}
                     </span>
+                    {isRejected(expense) && (
+                      <div className="mt-1 text-xs text-gray-500"> יש להעלות הוצאה חדשה </div>
+                    )}
                   </td>
                   {showProgramColumn && (
                     <td className="px-6 py-4 text-gray-700">
@@ -649,28 +663,27 @@ export function ExpensesTable({
                         )}
                       </div>
                       {!(showDownloadColumn || showProgramColumn) && (
-                      <div className="relative group ml-auto">
-                        <button
-                          onClick={(e) => handleMarkUrgent(expense, e)}
-                          className={`p-2 rounded-lg transition-all ${
-                            isUrgentStyled(expense)
-                              ? 'text-red-600 bg-red-50 hover:bg-red-100'
-                              : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                          }`}
-                          title={expense.priority === 'urgent' ? 'הסר דחיפות' : 'סמן כדחוף'}
-                        >
-                          <AlertTriangle className="w-4 h-4" />
-                        </button>
-                        
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                          {expense.priority === 'urgent' 
-                            ? 'הסר דחיפות' 
-                            : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
-                          }
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                        <div className="relative group ml-auto">
+                          <button
+                            onClick={(e) => handleMarkUrgent(expense, e)}
+                            className={`p-2 rounded-lg transition-all ${isUrgentStyled(expense)
+                                ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                                : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                              }`}
+                            title={expense.priority === 'urgent' ? 'הסר דחיפות' : 'סמן כדחוף'}
+                          >
+                            <AlertTriangle className="w-4 h-4" />
+                          </button>
+
+                          {/* Tooltip */}
+                          <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                            {expense.priority === 'urgent'
+                              ? 'הסר דחיפות'
+                              : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
+                            }
+                            <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                          </div>
                         </div>
-                      </div>
                       )}
 
                       <button
@@ -711,6 +724,14 @@ export function ExpensesTable({
                         </div>
 
                         <div className="bg-white rounded-lg p-6 shadow-sm">
+                          {isRejected(expense) && (
+                            <div className="mb-6 p-4 rounded-lg border border-rose-300 bg-rose-50 text-rose-800 flex items-center gap-3">
+                              <XCircle className="w-5 h-5" />
+                              <div className="font-medium">
+                                ההוצאה נדחתה, לא מחושבת בתקציב ולא תועבר לתשלום. יש להעלות הוצאה חדשה.
+                              </div>
+                            </div>
+                          )}
                           {/* Prominent Receipt Upload Banner inside expanded row */}
                           {((expense.status || '').toLowerCase() === 'sent_for_payment') && (
                             <div className="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex flex-col sm:flex-row items-center justify-between gap-3">
