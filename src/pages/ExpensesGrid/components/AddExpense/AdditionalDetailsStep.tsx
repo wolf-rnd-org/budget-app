@@ -182,6 +182,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
                 <CategoriesField
                   selectedCategories={categories}
                   onChange={setCategories}
+                  programId={programId || currentProgramId || ''}
                   error={attemptedSubmit && categories.length === 0}
                 />
               </div>

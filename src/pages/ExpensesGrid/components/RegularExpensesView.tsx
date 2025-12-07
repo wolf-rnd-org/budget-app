@@ -12,8 +12,18 @@ import EditPettyCashDialog from './MoreActions/EditPettyCashDialog';
 import { useCategoriesStore } from '@/stores/categoriesStore';
 import { isMockMode } from '@/api/http';
 // (removed duplicate imports)
-import { getProgramSummary } from '@/api/programs';
+import { getProgramSummary, type ProgramSummary } from '@/api/programs';
 import { expensesApi } from '@/api/http';
+import { createExpectedExpense } from '@/api/expectedExpenses';
+
+type ProgramSummaryWithExpected = ProgramSummary & {
+  expected_expenses?: number | null;
+  expected_expenses_total?: number | null;
+  expected_total?: number | null;
+  remaining_balance_including_expected?: number | null;
+  remaining_including_expected?: number | null;
+  remaining_balance_with_expected?: number | null;
+};
 
 export function RegularExpensesView() {
   const user = useAuthStore(s => s.user);
@@ -30,6 +40,8 @@ export function RegularExpensesView() {
 
   // Budget summary state
   const [totalBudget, setTotalBudget] = React.useState(0);
+  const [actualExpenses, setActualExpenses] = React.useState(0);
+  const [expectedExpenses, setExpectedExpenses] = React.useState(0);
   const [totalExpenses, setTotalExpenses] = React.useState(0);
   const [remainingBalance, setRemainingBalance] = React.useState(0);
   const [budgetUsedPercentage, setBudgetUsedPercentage] = React.useState(0);
@@ -73,32 +85,63 @@ export function RegularExpensesView() {
   const canViewBudgets = userActions.includes('program_budgets.view');
   const canViewAllExpenses = userActions.includes('expenses.view');
 
+  const applyProgramSummary = React.useCallback((summary: ProgramSummaryWithExpected) => {
+    const budgetVal = Number(summary.total_budget) || 0;
+    const actual = Number(summary.total_expenses) || 0;
+    const expected =
+      Number(
+        summary.expected_expenses ??
+        summary.expected_expenses_total ??
+        summary.expected_total ??
+        0
+      ) || 0;
+    const combined = actual + expected;
+
+    const remainingFromApi =
+      summary.remaining_balance_including_expected ??
+      summary.remaining_including_expected ??
+      summary.remaining_balance_with_expected;
+
+    const remainingVal = typeof remainingFromApi === 'number'
+      ? remainingFromApi
+      : budgetVal - combined;
+
+    const usedPct = budgetVal > 0 ? (combined / budgetVal) * 100 : 0;
+
+    setTotalBudget(budgetVal);
+    setActualExpenses(actual);
+    setExpectedExpenses(expected);
+    setTotalExpenses(combined);
+    setRemainingBalance(remainingVal);
+    setBudgetUsedPercentage(usedPct);
+    setBaseBudget((summary as any).base_budget ?? null);
+    setExtraBudget((summary as any).extra_budget ?? null);
+    setIncome((summary as any).income ?? null);
+  }, []);
+
+  const refreshBudgetSummary = React.useCallback(async () => {
+    if (!currentProgramId || !canViewBudgets) {
+      setBudgetLoading(false);
+      return;
+    }
+    try {
+      setBudgetLoading(true);
+      const summary = await getProgramSummary(currentProgramId);
+      applyProgramSummary(summary as ProgramSummaryWithExpected);
+    } catch (err) {
+      console.error('Error fetching budget summary:', err);
+    } finally {
+      setBudgetLoading(false);
+    }
+  }, [applyProgramSummary, canViewBudgets, currentProgramId]);
+
   // Derived: over budget by more than 5%
   const isOverLimit = totalBudget > 0 && totalExpenses > totalBudget * 1.05;
 
   // Fetch budget summary on component mount
   React.useEffect(() => {
-    async function fetchBudgetSummary() {
-      if (!currentProgramId || !canViewBudgets) { setBudgetLoading(false); return; }
-      try {
-        setBudgetLoading(true);
-        const summary = await getProgramSummary(currentProgramId);
-        setTotalBudget(summary.total_budget);
-        setTotalExpenses(summary.total_expenses);
-        setRemainingBalance(summary.remaining_balance);
-        setBudgetUsedPercentage((summary.total_expenses / summary.total_budget) * 100);
-        setBaseBudget((summary as any).base_budget ?? null);
-        setExtraBudget((summary as any).extra_budget ?? null);
-        setIncome((summary as any).income ?? null);
-      } catch (err) {
-        console.error('Error fetching budget summary:', err);
-      } finally {
-        setBudgetLoading(false);
-      }
-    }
-
-    fetchBudgetSummary();
-  }, [currentProgramId, canViewBudgets]);
+    refreshBudgetSummary();
+  }, [refreshBudgetSummary]);
 
   React.useEffect(() => {
     if (!user?.userId || !currentProgramId) {
@@ -328,6 +371,31 @@ export function RegularExpensesView() {
   const handleMoreActionsSubmit = async (p: MoreActionsPayload) => {
     if (!currentProgramId || !user?.userId) return;
 
+    if (p.type === 'expected') {
+      try {
+        if (isMockMode()) {
+          const updatedExpected = expectedExpenses + Number(p.amount || 0);
+          const combined = actualExpenses + updatedExpected;
+          setExpectedExpenses(updatedExpected);
+          setTotalExpenses(combined);
+          setRemainingBalance(totalBudget - combined);
+          setBudgetUsedPercentage(totalBudget > 0 ? (combined / totalBudget) * 100 : 0);
+          return;
+        }
+
+        await createExpectedExpense({
+          program_id: String(currentProgramId),
+          name: p.name,
+          expected_amount: Number(p.amount),
+        });
+        await refreshBudgetSummary();
+        return;
+      } catch (error) {
+        console.error('MoreActions submit failed', error);
+        throw new Error(resolveMoreActionsErrorMessage(error));
+      }
+    }
+
     const base = {
       program_id: String(currentProgramId),                 // ← ודאי מחרוזת
       categories: Array.isArray((p as any).categoryIds)
@@ -420,17 +488,7 @@ export function RegularExpensesView() {
       setCurrentPage(1);
 
       // Also refresh budget summary
-      const summary = await getProgramSummary(currentProgramId);
-      setTotalBudget(summary.total_budget);
-      setTotalExpenses(summary.total_expenses);
-      setRemainingBalance(summary.remaining_balance);
-      const usedPct = summary.total_budget > 0
-        ? (summary.total_expenses / summary.total_budget) * 100
-        : 0;
-      setBudgetUsedPercentage(usedPct);
-      setBaseBudget((summary as any).base_budget ?? null);
-      setExtraBudget((summary as any).extra_budget ?? null);
-      setIncome((summary as any).income ?? null);
+      await refreshBudgetSummary();
     } catch (err) {
       console.error("Error refreshing expenses and budget summary:", err);
       // Fallback to optimistic update if server fetch fails
@@ -464,14 +522,7 @@ export function RegularExpensesView() {
 
       // Also refresh budget summary
       if (canViewBudgets) {
-        const summary = await getProgramSummary(currentProgramId);
-        setTotalBudget(summary.total_budget);
-        setTotalExpenses(summary.total_expenses);
-        setRemainingBalance(summary.remaining_balance);
-        setBudgetUsedPercentage((summary.total_expenses / summary.total_budget) * 100);
-        setBaseBudget((summary as any).base_budget ?? null);
-        setExtraBudget((summary as any).extra_budget ?? null);
-        setIncome((summary as any).income ?? null);
+        await refreshBudgetSummary();
       }
     } catch (err) {
       console.error('Error refreshing expenses and budget summary:', err);
@@ -542,6 +593,8 @@ export function RegularExpensesView() {
           <BudgetSummaryCards
             totalBudget={totalBudget}
             totalExpenses={totalExpenses}
+            actualExpenses={actualExpenses}
+            expectedExpenses={expectedExpenses}
             remainingBalance={remainingBalance}
             budgetUsedPercentage={budgetUsedPercentage}
             baseBudget={baseBudget}
@@ -582,6 +635,7 @@ export function RegularExpensesView() {
           loadingMore={loadingMore}
           hasMore={hasMore}
           onLoadMore={loadMoreExpenses}
+          onExpenseUpdated={handleExpenseUpdated}
         />
 
         <Outlet />

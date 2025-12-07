@@ -5,25 +5,39 @@ import { formatCurrency } from '@/shared/utils';
 interface BudgetSummaryCardsProps {
   totalBudget: number;
   totalExpenses: number;
+  actualExpenses?: number;
+  expectedExpenses?: number;
   remainingBalance: number;
   budgetUsedPercentage: number;
   baseBudget?: number | null;
   extraBudget?: number | null;
   income?: number | null;
+  budgetLoaded?: boolean;
 }
 
 export function BudgetSummaryCards({
   totalBudget,
   totalExpenses,
+  actualExpenses,
+  expectedExpenses,
   remainingBalance,
   budgetUsedPercentage,
   baseBudget,
   extraBudget,
   income,
+  budgetLoaded: _budgetLoaded,
 }: BudgetSummaryCardsProps) {
   const percentLeft = totalBudget > 0
     ? Math.max(0, Math.round((remainingBalance / totalBudget) * 100))
     : 0;
+
+  const actual = typeof actualExpenses === 'number' ? actualExpenses : totalExpenses;
+  const expected = typeof expectedExpenses === 'number' ? expectedExpenses : 0;
+  const combinedExpenses = totalExpenses || (actual + expected);
+  const expensesUsagePct = Number.isFinite(budgetUsedPercentage)
+    ? budgetUsedPercentage
+    : (totalBudget > 0 ? (combinedExpenses / totalBudget) * 100 : 0);
+  const hasExpectedExpenses = expected > 0;
 
   // ערכים מנורמלים ובטוחים
   const extraVal = Number(extraBudget) || 0;
@@ -31,7 +45,7 @@ export function BudgetSummaryCards({
   const baseVal = Number(baseBudget) || Number(totalBudget - (incomeVal + extraVal)) || 0;
 
   // יחס הכנסות מול הוצאות למיקרו-בר
-  const denom = Math.max(0, incomeVal) + Math.max(0, totalExpenses);
+  const denom = Math.max(0, incomeVal) + Math.max(0, combinedExpenses);
   const incomeSharePct = denom > 0 ? Math.round((Math.max(0, incomeVal) / denom) * 100) : 0;
   const expenseSharePct = 100 - incomeSharePct;
 
@@ -172,18 +186,38 @@ export function BudgetSummaryCards({
             </div>
             <h3 className="text-lg font-semibold text-gray-900">סה"כ הוצאות</h3>
           </div>
-          <p className="text-3xl font-bold text-gray-900">{formatCurrency(totalExpenses)}</p>
-          <div className="mt-2">
-            <div className="w-full bg-gray-200 rounded-full h-2" role="progressbar" aria-valuenow={Math.min(budgetUsedPercentage, 100)} aria-valuemin={0} aria-valuemax={100}>
+          <p className="text-3xl font-bold text-gray-900 mb-2">{formatCurrency(combinedExpenses)}</p>
+
+          {/* Split badges like budget card */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-sm items-stretch">
+            {hasExpectedExpenses && (
+              <div className="flex items-center justify-between rounded-lg border border-indigo-200 bg-indigo-50 px-2 py-1.5 h-10 w-full min-w-0 sm:min-w-[150px]">
+                <span className="inline-flex items-center gap-1 font-medium text-indigo-900 text-[12.5px] leading-tight">
+                  הוצאות צפויות
+                </span>
+                <span className="font-semibold text-indigo-900 text-[12.5px] leading-tight">{formatCurrency(expected)}</span>
+              </div>
+            )}
+            <div className="flex items-center justify-between rounded-lg border border-purple-200 bg-purple-50 px-2 py-1.5 h-10 w-full min-w-0 sm:min-w-[150px]">
+              <span className="inline-flex items-center gap-1 font-medium text-purple-900 text-[12.5px] leading-tight">
+                הוצאות בפועל
+              </span>
+              <span className="font-semibold text-purple-900 text-[12.5px] leading-tight">{formatCurrency(actual)}</span>
+            </div>
+            {!hasExpectedExpenses && <div className="hidden sm:block h-10" aria-hidden />}
+          </div>
+
+          <div className="mt-4">
+            <div className="w-full bg-gray-200 rounded-full h-2.5" role="progressbar" aria-valuenow={Math.min(expensesUsagePct, 100)} aria-valuemin={0} aria-valuemax={100}>
               <div
-                className={`h-2 rounded-full transition-all duration-300 ${budgetUsedPercentage > 90 ? 'bg-red-500'
-                  : budgetUsedPercentage > 75 ? 'bg-amber-500'
+                className={`h-2.5 rounded-full transition-all duration-300 ${expensesUsagePct > 90 ? 'bg-red-500'
+                  : expensesUsagePct > 75 ? 'bg-amber-500'
                     : 'bg-green-500'
                   }`}
-                style={{ width: `${Math.min(budgetUsedPercentage, 100)}%` }}
+                style={{ width: `${Math.min(expensesUsagePct, 100)}%` }}
               />
             </div>
-            <p className="text-sm text-gray-500 mt-1">{budgetUsedPercentage.toFixed(1)}% מהתקציב נוצל</p>
+            <p className="text-sm text-gray-500 mt-1">{expensesUsagePct.toFixed(1)}% מהתקציב נוצל (כולל צפוי)</p>
           </div>
         </div>
       </div>
