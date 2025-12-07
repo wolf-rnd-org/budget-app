@@ -3,6 +3,7 @@ import { X, Save, Upload, CheckCircle, AlertCircle, FileText } from 'lucide-reac
 import { budgetApi, expensesApi, isMockMode } from '@/api/http';
 import { Expense } from '@/api/types';
 import { CategoriesField } from '../AddExpense/CategoriesField';
+import { useProgramsStore } from '@/stores/programsStore';
 // Categories are handled via CategoriesField; no direct store access here
 
 interface EditExpenseModalProps {
@@ -53,6 +54,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
     bank_account: '',
     beneficiary: '',
   });
+  const selectedProgramId = useProgramsStore(s => s.selectedProgramId);
 
   const hasExistingFile = (f: any): boolean => {
     if (!f) return false;
@@ -261,10 +263,7 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       return false;
     }
 
-    if ((categoryIds?.length ?? 0) === 0) {
-      setError('יש לבחור לפחות קטגוריה אחת');
-      return false;
-    }
+    // אל תכריח קטגוריה בעריכה: אם המשתמש לא נגע נשמור את הקיים בשרת
     return true;
   };
   // מזהה התוכנית המקורית של ההוצאה (כשהמודאל נטען)
@@ -308,11 +307,14 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
       setSaving(true);
       setError(null);
 
-      const updateData = {
+      const includeCategories = Boolean(touched.categories || (categoryIds?.length ?? 0) > 0);
+      const updateData: any = {
         ...formData,
         user_id: expense?.user_id,
-        categories: (categoryIds ?? []).map(String),
       };
+      if (includeCategories) {
+        updateData.categories = (categoryIds ?? []).map(String);
+      }
 
       if (isMockMode()) {
         // Mock success response
@@ -516,8 +518,8 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
 
                       {/** התאמה יציבה לתכנית + רמונט בעת שינוי */}
                       {(() => {
-                        const effectiveProgramId = formData.program_id || expense?.program_id || '';
-                        const catsInvalid = (categoryIds?.length ?? 0) === 0;
+                        const effectiveProgramId = formData.program_id || expense?.program_id || selectedProgramId || '';
+                        const catsInvalid = Boolean(touched.categories && (categoryIds?.length ?? 0) === 0);
                         const categoriesKey = categoryIds.length > 0 ? categoryIds.join(',') : 'none'; // ייצוג יציב של הקטגוריות הנבחרות
 
                         return (
@@ -531,11 +533,9 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
                                 setTouched(prev => ({ ...prev, categories: true }));
                                 setHasUnsavedChanges(true); // 
                               }}
-                              error={Boolean((attemptedSubmit || touched.categories) && catsInvalid)}
+                              error={false}
                             />
-                            {(attemptedSubmit || touched.categories) && catsInvalid && (
-                              <p className="text-sm text-red-600 mt-1">יש לבחור לפחות קטגוריה אחת</p>
-                            )}
+                            {}
                           </>
                         );
                       })()}

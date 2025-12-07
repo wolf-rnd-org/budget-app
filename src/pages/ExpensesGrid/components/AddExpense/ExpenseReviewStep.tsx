@@ -291,6 +291,7 @@ export function ExpenseReviewStep({ parsedData, initialInvoiceFile, initialBankF
               <CategoriesField
                 selectedCategories={formData.categories}
                 onChange={(categories) => handleInputChange('categories', categories)}
+                programId={formData.program_id || currentProgramId || ''}
               />
             </div>
 

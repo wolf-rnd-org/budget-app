@@ -8,6 +8,8 @@ interface CategoriesFieldProps {
   // Selected category IDs
   selectedCategories: string[];
   onChange: (categories: string[]) => void;
+  // Optional explicit program id (otherwise falls back to the globally selected program)
+  programId?: string | null | string[];
   disable?: string;
   error?: boolean;
 }
@@ -16,7 +18,7 @@ interface CategoriesFieldProps {
 
 
 
-export function CategoriesField({ selectedCategories, onChange, error }: CategoriesFieldProps) {
+export function CategoriesField({ selectedCategories, onChange, programId, error }: CategoriesFieldProps) {
   const [open, setOpen] = React.useState(false);
   const [search, setSearch] = React.useState('');
   const controlRef = React.useRef<HTMLButtonElement | null>(null);
@@ -25,14 +27,45 @@ export function CategoriesField({ selectedCategories, onChange, error }: Categor
   const categoriesByProgram = useCategoriesStore(s => s.categoriesByProgram);
   const fetchForProgram = useCategoriesStore(s => s.fetchForProgram);
   const selectedProgramId = useProgramsStore(s => s.selectedProgramId);
-  const programCats = selectedProgramId ? categoriesByProgram[selectedProgramId] : undefined;
+  const programs = useProgramsStore(s => s.programs);
+
+  const pickProgramId = (val: any): string | undefined => {
+    if (!val) return undefined;
+    if (Array.isArray(val)) return val.length ? String(val[0]) : undefined;
+    return String(val);
+  };
+
+  // Pick program for categories:
+  // - If prop exists and looks like a real id (not Airtable rec) -> use it
+  // - If prop looks like recId but store has non-rec id -> prefer store (admin view may select numeric program)
+  // - Else prop -> else selected -> else single/first program
+  const effectiveProgramId = React.useMemo(() => {
+    const fromProp = pickProgramId(programId);
+    const fromStore = pickProgramId(selectedProgramId);
+
+    const propLooksRec = fromProp?.startsWith('rec');
+    const storeLooksRec = fromStore?.startsWith('rec');
+
+    if (fromProp && !propLooksRec) return fromProp;
+    if (propLooksRec && fromStore && !storeLooksRec) return fromStore;
+
+    if (fromProp) return fromProp;
+    if (fromStore) return fromStore;
+    if (programs.length === 1) return pickProgramId(programs[0].id);
+    return programs[0]?.id ? String(programs[0].id) : undefined;
+  }, [programId, selectedProgramId, programs]);
+
+  const programCats = effectiveProgramId ? categoriesByProgram[effectiveProgramId] : undefined;
   const categories = programCats?.items || [];
   const loading = programCats?.loading || false;
   React.useEffect(() => {
-    if (selectedProgramId && !categoriesByProgram[selectedProgramId]) {
-      fetchForProgram(selectedProgramId);
+    if (!effectiveProgramId) return;
+    const entry = categoriesByProgram[effectiveProgramId];
+    const hasFetched = Boolean(entry?.lastFetched);
+    if (!entry || (!entry.loading && !hasFetched)) {
+      fetchForProgram(effectiveProgramId);
     }
-  }, [selectedProgramId, categoriesByProgram, fetchForProgram]);
+  }, [effectiveProgramId, categoriesByProgram, fetchForProgram]);
 
   React.useEffect(() => {
     const onClick = (e: MouseEvent) => {
@@ -76,10 +109,12 @@ export function CategoriesField({ selectedCategories, onChange, error }: Categor
 
   const filtered = categories.filter((cat) => cat.name.toLowerCase().includes(search.toLowerCase()));
 
-  const isSelected = (id: string) => selectedCategories.includes(id);
-  const toggleSelect = (id: string) => {
-    if (isSelected(id)) onChange(selectedCategories.filter((c) => c !== id));
-    else onChange([...selectedCategories, id]);
+  const normalizeId = (id: string | number) => String(id);
+  const isSelected = (id: string | number) => selectedCategories.includes(normalizeId(id));
+  const toggleSelect = (id: string | number) => {
+    const normalized = normalizeId(id);
+    if (isSelected(normalized)) onChange(selectedCategories.filter((c) => c !== normalized));
+    else onChange([...selectedCategories, normalized]);
   };
 
   const summaryLabel = selectedCategories.length === 0 ? 'בחרו קטגוריות' : `${selectedCategories.length} נבחרו`;
