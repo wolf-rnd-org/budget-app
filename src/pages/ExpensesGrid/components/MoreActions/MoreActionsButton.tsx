@@ -25,8 +25,8 @@ export default function MoreActionsButton({ categories = [], onSubmit, buttonLab
   const menuItems = useMemo(
     () => [
       { key: 'petty', label: 'קופה קטנה', onClick: () => setPettyOpen(true) },
-      { key: 'salary', label: 'דיווח שכר', onClick: () => setSalaryOpen(true) },
-      { key: 'expected', label: 'הוצאה צפויה', onClick: () => setExpectedOpen(true) },
+      { key: 'salary', label: 'דיווח שכר', onClick: () => setSalaryOpen(true) }
+      // ,{ key: 'expected', label: 'הוצאה צפויה', onClick: () => setExpectedOpen(true) },
       // { key: 'check', label: 'צ׳ק', onClick: () => setCheckOpen(true) },
     ],
     []
