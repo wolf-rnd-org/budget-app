@@ -104,9 +104,8 @@ export function SearchFilters({
                         setProgramFilter?.('');
                         setProgramMenuOpen(false);
                       }}
-                      className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${
-                        !programFilter ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                      }`}
+                      className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${!programFilter ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                        }`}
                     >
                       כל הפרויקטים
                     </button>
@@ -119,9 +118,8 @@ export function SearchFilters({
                           setProgramFilter?.(p.id);
                           setProgramMenuOpen(false);
                         }}
-                        className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${
-                          programFilter === p.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                        }`}
+                        className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${programFilter === p.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
                           <div className={`w-2 h-2 rounded-full ${programFilter === p.id ? 'bg-blue-600' : 'bg-gray-300'}`} />

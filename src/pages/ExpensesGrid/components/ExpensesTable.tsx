@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload, Eye, MoreHorizontal, ExternalLink } from 'lucide-react';
+import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload, Eye, MoreHorizontal, ExternalLink, XCircle } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -72,6 +72,7 @@ export function ExpensesTable({
     const suppressed = new Set(['sent_for_payment', 'paid', 'closed']);
     return String(expense.priority || '').toLowerCase() === 'urgent' && !suppressed.has(status);
   };
+  const isRejected = (expense: Expense) => String(expense.status || '').toLowerCase() === 'rejected';
 
   // Helpers to handle file download links from server
   const normalizeFiles = (files: any): { url: string; name?: string }[] => {
@@ -202,7 +203,7 @@ export function ExpensesTable({
       window.open(buildDownloadAndSendUrl(expense.id, 'invoice_file', 0, { advanced: true }), '_blank');
     }
   };
-const resolveViewUrl = (
+  const resolveViewUrl = (
     expense: Expense,
     field: 'invoice_file' | 'bank_details_file' | 'receipt_file',
     index: number
@@ -228,7 +229,7 @@ const resolveViewUrl = (
     }
   };
 
-//clean after tests in the prodaction
+  //clean after tests in the prodaction
   // const handleFileDownload = async (expense: Expense, field: 'invoice_file' | 'bank_details_file' | 'receipt_file', index: number, fileName: string) => {
   //   try {
   //     if (!user?.userId) {
@@ -317,7 +318,7 @@ const resolveViewUrl = (
       console.error('Failed to update expense status:', err);
     }
   };
-  
+
   // Render download buttons for all file types
   const renderDownloadButtons = (expense: Expense) => {
     const fileTypes = [
@@ -378,36 +379,36 @@ const resolveViewUrl = (
           // Fallback: show a receipt actions row even if attachments array is missing in list API
           (normalizeFiles((expense as any).receipt_file).length === 0 &&
             (String(expense.status || '').toLowerCase() === 'receipt_uploaded' || Boolean((expense as any).has_receipt))) && (
-              <div
-                key={`receipt_file-0-fallback`}
-                className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-1 min-h-[34px] whitespace-nowrap rounded-md bg-gray-50 w-full"
+            <div
+              key={`receipt_file-0-fallback`}
+              className="grid grid-cols-[1fr_auto_auto] items-center gap-2 px-3 py-1 min-h-[34px] whitespace-nowrap rounded-md bg-gray-50 w-full"
+            >
+              <span className="text-xs text-gray-800 inline-block w-16 text-right">קבלה</span>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  handleFileView(expense, 'receipt_file', 0);
+                }}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                title="צפייה"
+                aria-label="צפייה בקבלה"
               >
-                <span className="text-xs text-gray-800 inline-block w-16 text-right">קבלה</span>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleFileView(expense, 'receipt_file', 0);
-                  }}
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
-                  title="צפייה"
-                  aria-label="צפייה בקבלה"
-                >
-                  <Eye className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    const fileName = `קבלה_${expense.supplier_name}_${expense.id}`;
-                    handleFileDownload(expense, 'receipt_file', 0, fileName);
-                  }}
-    className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
-                  title="הורדה"
-                  aria-label="הורדה קבלה"
-                >
-                  <Download className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )
+                <Eye className="w-3.5 h-3.5" />
+              </button>
+              <button
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const fileName = `קבלה_${expense.supplier_name}_${expense.id}`;
+                  handleFileDownload(expense, 'receipt_file', 0, fileName);
+                }}
+                className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-blue-50 text-blue-700 hover:bg-blue-100 transition"
+                title="הורדה"
+                aria-label="הורדה קבלה"
+              >
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )
         }
       </div>
     );
@@ -546,6 +547,8 @@ const resolveViewUrl = (
         return 'bg-sky-100 text-sky-800 border-sky-200';
       case 'closed':
         return 'bg-gray-200 text-gray-800 border-gray-300';
+      case 'rejected':
+        return 'bg-gray-200 text-gray-700 border-gray-300';
       default:
         return 'bg-gray-100 text-gray-800 border-gray-200';
     }
@@ -567,6 +570,8 @@ const resolveViewUrl = (
         return 'קופה קטנה';
       case 'salary':
         return 'דיווח שכר';
+      case 'rejected':
+        return 'נדחה';
       default:
         return status;
     }
@@ -651,408 +656,423 @@ const resolveViewUrl = (
 
               return (
                 <React.Fragment key={expense.id}>
-                <tr
-                  onClick={() => onRowClick(expense.id)}
-                  className={`hover:bg-gray-50 cursor-pointer transition-colors group ${
-                    isUrgentStyled(expense)
-                      ? ((showDownloadColumn || showProgramColumn) ? 'bg-red-50 border-l-4 border-red-500' : 'bg-red-50 border-l-4 border-red-500')
-                      : ''
-                  }`}
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      {isUrgentStyled(expense) && (
-                        (showDownloadColumn || showProgramColumn)
-                          ? (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
-                              דחוף
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
-                              דחוף
-                            </span>
-                          )
-                      )}
-                      <div className="font-medium text-gray-900">{expense.supplier_name}</div>
-                    </div>
-                    <div className="text-sm text-gray-500">{expense.invoice_description}</div>
-                  </td>
-                  <td className="px-6 py-4 text-gray-700">
-                    {new Date(expense.date).toLocaleDateString('he-IL')}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-gray-900">
-                      {formatCurrency(expense.amount)}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 min-w-[150px]">
-                    <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(expense.status)}`}>
-                      {getStatusText(expense.status)}
-                    </span>
-                  </td>
-                  {showProgramColumn && (
-                    <td className="px-6 py-4 text-gray-700">
-                      {expense.program_name || '—'}
-                    </td>
-                  )}
-                  {showDownloadColumn && (
+                  <tr
+                    onClick={() => onRowClick(expense.id)}
+                    className={`hover:bg-gray-50 cursor-pointer transition-colors group ${isRejected(expense)
+                        ? 'bg-gray-50 border-l-4 border-gray-300 opacity-80'
+                        : (isUrgentStyled(expense) ? 'bg-red-50 border-l-4 border-red-500' : '')
+                      }`}
+                  >
                     <td className="px-6 py-4">
-                      <div className="flex items-center justify-center gap-2">
-                        {renderDownloadButtons(expense)}
-                      </div>
-                    </td>
-                  )}
-                  <td className="py-4 pr-6 pl-12 w-[200px] min-w-[200px]">
-                    <div className="relative flex items-center gap-1.5 w-full justify-end">
-                      {/* Left slot to keep actions aligned across rows */}
-                      <div className="flex items-center justify-start min-w-[64px] mr-4">
-                        {((expense.status || '').toLowerCase() === 'sent_for_payment') && !showDownloadColumn ? (
-                          <>
-                            <input
-                              id={`receipt-upload-inline-${expense.id}`}
-                              type="file"
-                              accept=".pdf,.jpg,.jpeg,.png"
-                              className="hidden"
-                              onChange={(e) => handleReceiptUploadChange(e, expense)}
-                              disabled={uploadingId === expense.id}
-                            />
-                            <label
-                              htmlFor={`receipt-upload-inline-${expense.id}`}
-                              onClick={(e) => e.stopPropagation()}
-                              className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all border whitespace-nowrap shrink-0 ${uploadingId === expense.id
-                                ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
-                                : 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 hover:border-indigo-400 ring-1 ring-inset ring-indigo-100'}
-                              `}
-                            >
-                              {uploadingId === expense.id ? (
-                                <span className="inline-flex items-center gap-1">
-                                  <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></span>
-                                  מעלה
-                                </span>
-                              ) : (
-                                <>
-                                  <Upload className="w-3 h-3" />
-                                  קבלה
-                                </>
-                              )}
-                            </label>
-                          </>
-                        ) : (
-                          <span aria-hidden className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-transparent opacity-0 select-none">
-                            קבלה
+                      <div className="flex items-center gap-2">
+                        {isUrgentStyled(expense) && (
+                          (showDownloadColumn || showProgramColumn)
+                            ? (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
+                                דחוף
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-red-600 text-white border border-red-700">
+                                דחוף
+                              </span>
+                            )
+                        )}
+                        {isRejected(expense) && (
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-200 text-gray-700 border border-gray-300">
+                            <XCircle className="w-3 h-3" />
+                            נדחה • לא ישולם
                           </span>
                         )}
+                        <div className={`font-medium ${isRejected(expense) ? 'text-gray-500' : 'text-gray-900'}`}>{expense.supplier_name}</div>
                       </div>
-                      {!(showDownloadColumn || showProgramColumn) && (
-                      <div className="relative ml-auto">
-                        <button
-                          onClick={(e) => handleMarkUrgent(expense, e)}
-                          className={`peer p-2 rounded-lg transition-all ${
-                            isUrgentStyled(expense)
-                              ? 'text-red-600 bg-red-50 hover:bg-red-100'
-                              : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
-                          }`}
-                          title={expense.priority === 'urgent' ? 'הסר דחיפות' : 'סמן כדחוף'}
-                        >
-                          <AlertTriangle className="w-4 h-4" />
-                        </button>
-                        
-                        {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 peer-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                          {expense.priority === 'urgent' 
-                            ? 'הסר דחיפות' 
-                            : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
-                          }
-                          <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                        </div>
-                      </div>
+                      <div className={`text-sm ${isRejected(expense) ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{expense.invoice_description}</div>
+                    </td>
+                    <td className="px-6 py-4 text-gray-700">
+                      {new Date(expense.date).toLocaleDateString('he-IL')}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`font-semibold ${isRejected(expense) ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
+                        {formatCurrency(expense.amount)}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 min-w-[150px]">
+                      <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(expense.status)}`}>
+                        {getStatusText(expense.status)}
+                      </span>
+                      {isRejected(expense) && (
+                        <div className="mt-1 text-xs text-gray-500"> יש להעלות הוצאה חדשה </div>
                       )}
+                    </td>
+                    {showProgramColumn && (
+                      <td className="px-6 py-4 text-gray-700">
+                        {expense.program_name || '—'}
+                      </td>
+                    )}
+                    {showDownloadColumn && (
+                      <td className="px-6 py-4">
+                        <div className="flex items-center justify-center gap-2">
+                          {renderDownloadButtons(expense)}
+                        </div>
+                      </td>
+                    )}
+                    <td className="py-4 pr-6 pl-12 w-[200px] min-w-[200px]">
+                      <div className="relative flex items-center gap-1.5 w-full justify-end">
+                        {/* Left slot to keep actions aligned across rows */}
+                        <div className="flex items-center justify-start min-w-[64px] mr-4">
+                          {((expense.status || '').toLowerCase() === 'sent_for_payment') && !showDownloadColumn ? (
+                            <>
+                              <input
+                                id={`receipt-upload-inline-${expense.id}`}
+                                type="file"
+                                accept=".pdf,.jpg,.jpeg,.png"
+                                className="hidden"
+                                onChange={(e) => handleReceiptUploadChange(e, expense)}
+                                disabled={uploadingId === expense.id}
+                              />
+                              <label
+                                htmlFor={`receipt-upload-inline-${expense.id}`}
+                                onClick={(e) => e.stopPropagation()}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all border whitespace-nowrap shrink-0 ${uploadingId === expense.id
+                                  ? 'bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed'
+                                  : 'bg-white text-indigo-700 border-indigo-300 hover:bg-indigo-50 hover:border-indigo-400 ring-1 ring-inset ring-indigo-100'}
+                              `}
+                              >
+                                {uploadingId === expense.id ? (
+                                  <span className="inline-flex items-center gap-1">
+                                    <span className="animate-spin rounded-full h-3 w-3 border-b-2 border-blue-500"></span>
+                                    מעלה
+                                  </span>
+                                ) : (
+                                  <>
+                                    <Upload className="w-3 h-3" />
+                                    קבלה
+                                  </>
+                                )}
+                              </label>
+                            </>
+                          ) : (
+                            <span aria-hidden className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-xs font-medium border border-transparent opacity-0 select-none">
+                              קבלה
+                            </span>
+                          )}
+                        </div>
+                        {!(showDownloadColumn || showProgramColumn) && (
+                          <div className="relative ml-auto">
+                            <button
+                              onClick={(e) => handleMarkUrgent(expense, e)}
+                              className={`peer p-2 rounded-lg transition-all ${isUrgentStyled(expense)
+                                  ? 'text-red-600 bg-red-50 hover:bg-red-100'
+                                  : 'text-gray-400 hover:text-red-600 hover:bg-red-50'
+                                }`}
+                              title={expense.priority === 'urgent' ? 'הסר דחיפות' : 'סמן כדחוף'}
+                            >
+                              <AlertTriangle className="w-4 h-4" />
+                            </button>
 
-                      {showDownloadColumn && hasInvoiceFile && (
+                            {/* Tooltip */}
+                            <div className="absolute bottom-full left-1/2 transform -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 peer-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                              {expense.priority === 'urgent'
+                                ? 'הסר דחיפות'
+                                : 'הערה: סמן הוצאות כדחופות רק אם הכסף באמת דחוף'
+                              }
+                              <div className="absolute top-full left-1/2 transform -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        )}
+
+                        {showDownloadColumn && hasInvoiceFile && (
+                          <div className="relative">
+                            <button
+                              onClick={(e) => {
+                                if (isInvoiceExportDisabled) return;
+                                e.stopPropagation();
+                                handleInvoiceExport(expense);
+                              }}
+                              className={`peer p-2 rounded-full transition ${isInvoiceExportDisabled
+                                ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
+                                : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'}`}
+                              aria-label={"ייצוא להנה\"ח"}
+                              disabled={isInvoiceExportDisabled}
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                            </button>
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 peer-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                              {isInvoiceExportDisabled
+                                ? 'ההוצאה כבר יצאה להנה\"ח ולא ניתן לייצא אותה שוב'
+                                : 'בעת ייצוא להנה\"ח ישלח מייל אוטומטי למפעילה ולספקית'}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        )}
+
                         <div className="relative">
                           <button
                             onClick={(e) => {
-                              if (isInvoiceExportDisabled) return;
                               e.stopPropagation();
-                              handleInvoiceExport(expense);
+                              setActionMenuOpenId((prev) => prev === expense.id ? null : expense.id);
                             }}
-                            className={`peer p-2 rounded-full transition ${isInvoiceExportDisabled
-                              ? 'text-gray-400 bg-gray-50 cursor-not-allowed'
-                              : 'text-blue-600 hover:text-blue-800 hover:bg-blue-50'}`}
-                            aria-label={"ייצוא להנה\"ח"}
-                            disabled={isInvoiceExportDisabled}
+                            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition"
+                            aria-label="פעולות נוספות"
                           >
-                            <ExternalLink className="w-4 h-4" />
+                            <MoreHorizontal className="w-4 h-4" />
                           </button>
-                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 peer-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
-                            {isInvoiceExportDisabled
-                              ? 'ההוצאה כבר יצאה להנה\"ח ולא ניתן לייצא אותה שוב'
-                              : 'בעת ייצוא להנה\"ח ישלח מייל אוטומטי למפעילה ולספקית'}
-                            <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="relative">
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setActionMenuOpenId((prev) => prev === expense.id ? null : expense.id);
-                          }}
-                          className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition"
-                          aria-label="פעולות נוספות"
-                        >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                        {actionMenuOpenId === expense.id && (
-                          <div className="absolute left-0 top-9 z-10 w-36 rounded-lg border border-gray-100 bg-white shadow-lg py-2">
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActionMenuOpenId(null);
-                                onEdit(expense, e);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                            >
-                              <Edit3 className="w-4 h-4" />
-                              עריכה
-                            </button>
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActionMenuOpenId(null);
-                                onDelete(expense, e);
-                              }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                            >
-                              <Trash2 className="w-4 h-4" />
-                              מחיקה
-                            </button>
-                          </div>
-                        )}
-                      </div>
-
-                      <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
-                        {expandedRow === expense.id ?
-                          <ChevronUp className="w-4 h-4" /> :
-                          <ChevronDown className="w-4 h-4" />
-                        }
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-
-                {/* Accordion Content */}
-                {expandedRow === expense.id && (
-                  <tr>
-                    <td colSpan={
-                      (showProgramColumn ? 1 : 0) +
-                      (showDownloadColumn ? 1 : 0) +
-                      5 // base columns: supplier, date, amount, status, actions
-                    } className="px-6 py-0">
-                      <div className="bg-gray-50 rounded-xl p-6 m-4 border border-gray-200">
-                        <div className="mb-4">
-                          <h4 className="text-lg font-semibold text-gray-900 mb-1">פרטי הוצאה נוספים</h4>
-                          <div className="w-12 h-0.5 bg-blue-500 rounded-full"></div>
-                        </div>
-
-                        <div className="bg-white rounded-lg p-6 shadow-sm">
-                          {/* Prominent Receipt Upload Banner inside expanded row */}
-                          {((expense.status || '').toLowerCase() === 'sent_for_payment') && (
-                            <div className="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex flex-col sm:flex-row items-center justify-between gap-3">
-                              <div className="text-amber-900 font-medium">
-                                הועבר לתשלום - העלו קבלה כדי להשלים את התהליך
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <input
-                                  id={`receipt-upload-${expense.id}`}
-                                  type="file"
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  className="hidden"
-                                  onChange={(e) => handleReceiptUploadChange(e, expense)}
-                                  disabled={uploadingId === expense.id}
-                                />
-                                <label
-                                  htmlFor={`receipt-upload-${expense.id}`}
-                                  className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium cursor-pointer transition-all ${uploadingId === expense.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                                >
-                                  {uploadingId === expense.id ? (
-                                    <span className="inline-flex items-center gap-2">
-                                      <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
-                                      מעלה קבלה...
-                                    </span>
-                                  ) : (
-                                    <>
-                                      <Upload className="w-4 h-4" />
-                                      העלאת קבלה
-                                    </>
-                                  )}
-                                </label>
-                              </div>
-                            </div>
-                          )}
-                          {uploadErrors[expense.id] && expandedRow === expense.id && (
-                            <div className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{uploadErrors[expense.id]}</div>
-                          )}
-                          {/* Basic Details Section */}
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">תיאור החשבונית</span>
-                              <span className="text-sm text-gray-900 font-medium">{expense.invoice_description}</span>
-                            </div>
-
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">חשבונית ע''ש</span>
-                              <span className="text-sm text-gray-900 font-bold">{expense.budget}</span>
-                            </div>
-
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">מספר עסק</span>
-                              <span className="text-sm text-gray-900 font-mono">{expense.business_number}</span>
-                            </div>
-
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">סוג חשבונית</span>
-                              <span className="text-sm text-gray-900 font-medium">{expense.invoice_type}</span>
-                            </div>
-
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">אימייל ספק</span>
-                              <span className="text-sm text-gray-900 font-medium">{expense.supplier_email || 'לא צוין'}</span>
-                            </div>
-
-                            <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                              <span className="text-sm font-medium text-gray-600">קטגוריות</span>
-                              <div className="flex flex-wrap gap-1">
-                                {Array.isArray(expense.categories) ?
-                                  expense.categories.map((cat, idx) => (
-                                    <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                                      {typeof cat === 'string' ? cat : (cat?.name ?? cat?.id ?? '—')}
-                                    </span>
-                                  )) :
-                                  <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
-                                    {expense.categories}
-                                  </span>
-                                }
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Bank Details Section */}
-                          <div className="pt-4 border-t border-gray-200">
-                            <h5 className="text-sm font-semibold text-gray-700 mb-3">פרטי בנק</h5>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                <span className="text-sm font-medium text-gray-600">שם הבנק</span>
-                                <span className="text-sm text-gray-900">{(expense as any).bank_name || expense.bank_name || '—'}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                <span className="text-sm font-medium text-gray-600">סניף</span>
-                                <span className="text-sm text-gray-900">{(expense as any).bank_branch || expense.bank_branch || '—'}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                <span className="text-sm font-medium text-gray-600">חשבון</span>
-                                <span className="text-sm text-gray-900">{(expense as any).bank_account || expense.bank_account || '—'}</span>
-                              </div>
-                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                <span className="text-sm font-medium text-gray-600">מוטב</span>
-                                <span className="text-sm text-gray-900">{(expense as any).beneficiary || expense.beneficiary || '—'}</span>
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Files Section */}
-                          <div className="pt-4 border-t border-gray-200">
-                            <h5 className="text-sm font-semibold text-gray-700 mb-3">קבצים מצורפים</h5>
-                            <div className="flex flex-wrap gap-3">
-                              <a
-                                href={Array.isArray(expense.invoice_file)
-                                  ? (isMockMode()
-                                    ? (typeof (expense.invoice_file as any)[0] === 'string'
-                                      ? (expense.invoice_file as any)[0]
-                                      : ((expense.invoice_file as any)[0]?.url || ''))
-                                    : buildRedirectUrl(expense.id, 'invoice_file', 0))
-                                  : (typeof expense.invoice_file === 'string'
-                                    ? expense.invoice_file
-                                    : ((expense.invoice_file as any)?.url || ''))}
-                                style={{ display: (normalizeFiles as any)(expense.invoice_file).length > 0 ? 'inline-flex' : 'none' }}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                          {actionMenuOpenId === expense.id && (
+                            <div className="absolute left-0 top-9 z-10 w-36 rounded-lg border border-gray-100 bg-white shadow-lg py-2">
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpenId(null);
+                                  onEdit(expense, e);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
                               >
-                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                                </svg>
-                                חשבונית
-                              </a>
+                                <Edit3 className="w-4 h-4" />
+                                עריכה
+                              </button>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setActionMenuOpenId(null);
+                                  onDelete(expense, e);
+                                }}
+                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                                מחיקה
+                              </button>
+                            </div>
+                          )}
+                        </div>
 
-                              {(normalizeFiles as any)(expense.bank_details_file).length > 0 && (
+                        <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
+                          {expandedRow === expense.id ?
+                            <ChevronUp className="w-4 h-4" /> :
+                            <ChevronDown className="w-4 h-4" />
+                          }
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+
+                  {/* Accordion Content */}
+                  {expandedRow === expense.id && (
+                    <tr>
+                      <td colSpan={
+                        (showProgramColumn ? 1 : 0) +
+                        (showDownloadColumn ? 1 : 0) +
+                        5 // base columns: supplier, date, amount, status, actions
+                      } className="px-6 py-0">
+                        <div className="bg-gray-50 rounded-xl p-6 m-4 border border-gray-200">
+                          <div className="mb-4">
+                            <h4 className="text-lg font-semibold text-gray-900 mb-1">פרטי הוצאה נוספים</h4>
+                            <div className="w-12 h-0.5 bg-blue-500 rounded-full"></div>
+                          </div>
+
+                          <div className="bg-white rounded-lg p-6 shadow-sm">
+                            {isRejected(expense) && (
+                              <div className="mb-6 p-4 rounded-lg border border-rose-300 bg-rose-50 text-rose-800 flex items-center gap-3">
+                                <XCircle className="w-5 h-5" />
+                                <div className="font-medium">
+                                  ההוצאה נדחתה, לא מחושבת בתקציב ולא תועבר לתשלום. יש להעלות הוצאה חדשה.
+                                </div>
+                              </div>
+                            )}
+                            {/* Prominent Receipt Upload Banner inside expanded row */}
+                            {((expense.status || '').toLowerCase() === 'sent_for_payment') && (
+                              <div className="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex flex-col sm:flex-row items-center justify-between gap-3">
+                                <div className="text-amber-900 font-medium">
+                                  הועבר לתשלום - העלו קבלה כדי להשלים את התהליך
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <input
+                                    id={`receipt-upload-${expense.id}`}
+                                    type="file"
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    className="hidden"
+                                    onChange={(e) => handleReceiptUploadChange(e, expense)}
+                                    disabled={uploadingId === expense.id}
+                                  />
+                                  <label
+                                    htmlFor={`receipt-upload-${expense.id}`}
+                                    className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-white font-medium cursor-pointer transition-all ${uploadingId === expense.id ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                                  >
+                                    {uploadingId === expense.id ? (
+                                      <span className="inline-flex items-center gap-2">
+                                        <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                                        מעלה קבלה...
+                                      </span>
+                                    ) : (
+                                      <>
+                                        <Upload className="w-4 h-4" />
+                                        העלאת קבלה
+                                      </>
+                                    )}
+                                  </label>
+                                </div>
+                              </div>
+                            )}
+                            {uploadErrors[expense.id] && expandedRow === expense.id && (
+                              <div className="mb-4 text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">{uploadErrors[expense.id]}</div>
+                            )}
+                            {/* Basic Details Section */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">תיאור החשבונית</span>
+                                <span className="text-sm text-gray-900 font-medium">{expense.invoice_description}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">חשבונית ע''ש</span>
+                                <span className="text-sm text-gray-900 font-bold">{expense.budget}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">מספר עסק</span>
+                                <span className="text-sm text-gray-900 font-mono">{expense.business_number}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">סוג חשבונית</span>
+                                <span className="text-sm text-gray-900 font-medium">{expense.invoice_type}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">אימייל ספק</span>
+                                <span className="text-sm text-gray-900 font-medium">{expense.supplier_email || 'לא צוין'}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">קטגוריות</span>
+                                <div className="flex flex-wrap gap-1">
+                                  {Array.isArray(expense.categories) ?
+                                    expense.categories.map((cat, idx) => (
+                                      <span key={idx} className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                                        {typeof cat === 'string' ? cat : (cat?.name ?? cat?.id ?? '—')}
+                                      </span>
+                                    )) :
+                                    <span className="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-medium">
+                                      {expense.categories}
+                                    </span>
+                                  }
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Bank Details Section */}
+                            <div className="pt-4 border-t border-gray-200">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-3">פרטי בנק</h5>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                  <span className="text-sm font-medium text-gray-600">שם הבנק</span>
+                                  <span className="text-sm text-gray-900">{(expense as any).bank_name || expense.bank_name || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                  <span className="text-sm font-medium text-gray-600">סניף</span>
+                                  <span className="text-sm text-gray-900">{(expense as any).bank_branch || expense.bank_branch || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                  <span className="text-sm font-medium text-gray-600">חשבון</span>
+                                  <span className="text-sm text-gray-900">{(expense as any).bank_account || expense.bank_account || '—'}</span>
+                                </div>
+                                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                  <span className="text-sm font-medium text-gray-600">מוטב</span>
+                                  <span className="text-sm text-gray-900">{(expense as any).beneficiary || expense.beneficiary || '—'}</span>
+                                </div>
+                              </div>
+                            </div>
+
+                            {/* Files Section */}
+                            <div className="pt-4 border-t border-gray-200">
+                              <h5 className="text-sm font-semibold text-gray-700 mb-3">קבצים מצורפים</h5>
+                              <div className="flex flex-wrap gap-3">
                                 <a
-                                  href={Array.isArray(expense.bank_details_file)
+                                  href={Array.isArray(expense.invoice_file)
                                     ? (isMockMode()
-                                      ? (typeof (expense.bank_details_file as any)[0] === 'string'
-                                        ? (expense.bank_details_file as any)[0]
-                                        : ((expense.bank_details_file as any)[0]?.url || ''))
-                                      : buildRedirectUrl(expense.id, 'bank_details_file', 0))
-                                    : (typeof expense.bank_details_file === 'string'
-                                      ? expense.bank_details_file
-                                      : ((expense.bank_details_file as any)?.url || ''))}
+                                      ? (typeof (expense.invoice_file as any)[0] === 'string'
+                                        ? (expense.invoice_file as any)[0]
+                                        : ((expense.invoice_file as any)[0]?.url || ''))
+                                      : buildRedirectUrl(expense.id, 'invoice_file', 0))
+                                    : (typeof expense.invoice_file === 'string'
+                                      ? expense.invoice_file
+                                      : ((expense.invoice_file as any)?.url || ''))}
+                                  style={{ display: (normalizeFiles as any)(expense.invoice_file).length > 0 ? 'inline-flex' : 'none' }}
                                   target="_blank"
                                   rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
-                                >
-                                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-                                  </svg>
-                                  פרטי בנק
-                                </a>
-                              )}
-
-                              {(normalizeFiles as any)(expense.receipt_file).length > 0 && (
-                                <a
-                                  href={Array.isArray(expense.receipt_file)
-                                    ? (isMockMode()
-                                      ? (typeof (expense.receipt_file as any)[0] === 'string'
-                                        ? (expense.receipt_file as any)[0]
-                                        : ((expense.receipt_file as any)[0]?.url || ''))
-                                      : buildRedirectUrl(expense.id, 'receipt_file', 0))
-                                    : (typeof expense.receipt_file === 'string'
-                                      ? expense.receipt_file
-                                      : ((expense.receipt_file as any)?.url || ''))}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                  className="inline-flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
                                 >
                                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                   </svg>
-                                  קבלה
+                                  חשבונית
                                 </a>
-                              )}
 
-                              {(normalizeFiles as any)(expense.receipt_file).length === 0 &&
-                                (String(expense.status || '').toLowerCase() === 'receipt_uploaded' || Boolean((expense as any).has_receipt)) && (
+                                {(normalizeFiles as any)(expense.bank_details_file).length > 0 && (
                                   <a
-                                    href={buildRedirectUrl(expense.id, 'receipt_file', 0)}
+                                    href={Array.isArray(expense.bank_details_file)
+                                      ? (isMockMode()
+                                        ? (typeof (expense.bank_details_file as any)[0] === 'string'
+                                          ? (expense.bank_details_file as any)[0]
+                                          : ((expense.bank_details_file as any)[0]?.url || ''))
+                                        : buildRedirectUrl(expense.id, 'bank_details_file', 0))
+                                      : (typeof expense.bank_details_file === 'string'
+                                        ? expense.bank_details_file
+                                        : ((expense.bank_details_file as any)?.url || ''))}
                                     target="_blank"
                                     rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                    className="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
                                   >
                                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2 2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
+                                    </svg>
+                                    פרטי בנק
+                                  </a>
+                                )}
+
+                                {(normalizeFiles as any)(expense.receipt_file).length > 0 && (
+                                  <a
+                                    href={Array.isArray(expense.receipt_file)
+                                      ? (isMockMode()
+                                        ? (typeof (expense.receipt_file as any)[0] === 'string'
+                                          ? (expense.receipt_file as any)[0]
+                                          : ((expense.receipt_file as any)[0]?.url || ''))
+                                        : buildRedirectUrl(expense.id, 'receipt_file', 0))
+                                      : (typeof expense.receipt_file === 'string'
+                                        ? expense.receipt_file
+                                        : ((expense.receipt_file as any)?.url || ''))}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                  >
+                                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                                     </svg>
                                     קבלה
                                   </a>
                                 )}
+
+                                {(normalizeFiles as any)(expense.receipt_file).length === 0 &&
+                                  (String(expense.status || '').toLowerCase() === 'receipt_uploaded' || Boolean((expense as any).has_receipt)) && (
+                                    <a
+                                      href={buildRedirectUrl(expense.id, 'receipt_file', 0)}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-2 bg-amber-500 hover:bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-all"
+                                    >
+                                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 8H7a2 2 0 01-2 2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                      </svg>
+                                      קבלה
+                                    </a>
+                                  )}
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                    </td>
-                  </tr>
-                )}
-              </React.Fragment>
-            );
+                      </td>
+                    </tr>
+                  )}
+                </React.Fragment>
+              );
             })}
           </tbody>
         </table>
