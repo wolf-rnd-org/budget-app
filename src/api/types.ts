@@ -37,6 +37,7 @@ export type Expense = {
   status: string;
   user_id: number | string;
   priority?: string;
+  rejection_reason?: string | null;
   id_number?: string;      
   month?: string;          
 is_gross?: GrossNet | boolean;

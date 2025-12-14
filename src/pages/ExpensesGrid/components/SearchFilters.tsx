@@ -14,8 +14,8 @@ interface SearchFiltersProps {
   setDateTo: (value: string) => void;
   // Optional program filter for admin view
   programOptions?: { id: string; name: string }[];
-  programFilter?: string;
-  setProgramFilter?: (value: string) => void;
+  programFilter?: string[];
+  setProgramFilter?: React.Dispatch<React.SetStateAction<string[]>>;
   programLoading?: boolean;
 }
 
@@ -40,13 +40,15 @@ export function SearchFilters({
   const [programSearchTerm, setProgramSearchTerm] = React.useState('');
   const programSearchInputRef = React.useRef<HTMLInputElement | null>(null);
 
+  const selectedPrograms = programFilter || [];
   const currentProgramName = React.useMemo(() => {
     if (!programOptions || !programOptions.length) return 'כל הפרויקטים';
-    if (!programFilter) return 'כל הפרויקטים';
-    return (
-      programOptions.find((p) => p.id === programFilter)?.name || 'בחר פרויקט'
-    );
-  }, [programOptions, programFilter]);
+    if (!selectedPrograms.length) return 'כל הפרויקטים';
+    if (selectedPrograms.length === 1) {
+      return programOptions.find((p) => p.id === selectedPrograms[0])?.name || 'בחר פרויקט';
+    }
+    return `${selectedPrograms.length} פרויקטים נבחרו`;
+  }, [programOptions, selectedPrograms]);
 
   const filteredPrograms = React.useMemo(() => {
     if (!programOptions) return [] as { id: string; name: string }[];
@@ -54,6 +56,16 @@ export function SearchFilters({
     if (!term) return programOptions;
     return programOptions.filter((p) => p.name.toLowerCase().includes(term));
   }, [programOptions, programSearchTerm]);
+
+  const toggleProgram = (programId: string) => {
+    if (!setProgramFilter) return;
+    setProgramFilter((prev) => {
+      const current = Array.isArray(prev) ? prev : [];
+      return current.includes(programId)
+        ? current.filter((id) => id !== programId)
+        : [...current, programId];
+    });
+  };
 
   React.useEffect(() => {
     if (isProgramMenuOpen) {
@@ -101,12 +113,11 @@ export function SearchFilters({
                     <button
                       type="button"
                       onClick={() => {
-                        setProgramFilter?.('');
+                        setProgramFilter?.([]);
                         setProgramMenuOpen(false);
                       }}
-                      className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${
-                        !programFilter ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                      }`}
+                      className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${selectedPrograms.length === 0 ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                        }`}
                     >
                       כל הפרויקטים
                     </button>
@@ -115,18 +126,14 @@ export function SearchFilters({
                       <button
                         type="button"
                         key={p.id}
-                        onClick={() => {
-                          setProgramFilter?.(p.id);
-                          setProgramMenuOpen(false);
-                        }}
-                        className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${
-                          programFilter === p.id ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
-                        }`}
+                        onClick={() => toggleProgram(p.id)}
+                        className={`w-full text-right px-4 py-3 hover:bg-gray-50 transition-colors ${selectedPrograms.includes(p.id) ? 'bg-blue-50 text-blue-700 font-medium' : 'text-gray-700'
+                          }`}
                       >
                         <div className="flex items-center gap-3">
-                          <div className={`w-2 h-2 rounded-full ${programFilter === p.id ? 'bg-blue-600' : 'bg-gray-300'}`} />
+                          <div className={`w-2 h-2 rounded-full ${selectedPrograms.includes(p.id) ? 'bg-blue-600' : 'bg-gray-300'}`} />
                           <span className="flex-1">{p.name}</span>
-                          {programFilter === p.id && (
+                          {selectedPrograms.includes(p.id) && (
                             <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded-full">נבחר</span>
                           )}
                         </div>
@@ -157,12 +164,13 @@ export function SearchFilters({
         >
           <option value="">כל הסטטוסים</option>
           <option value="new">חדש</option>
-          <option value="sent_for_payment">נשלח לתשלום</option>
+          <option value="sent_for_payment">נשלח- לאישור</option>
           <option value="paid">שולם</option>
           <option value="receipt_uploaded">קבלה הועלתה</option>
           <option value="closed">נסגר</option>
           <option value="petty_cash">קופה קטנה</option>
           <option value="salary">שכר</option>
+          <option value="rejected">נדחה</option>
         </select>
 
         <select
