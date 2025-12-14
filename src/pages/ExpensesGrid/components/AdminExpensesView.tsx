@@ -11,6 +11,8 @@ import { expensesApi } from '@/api/http';
 import { getPrograms, type Program } from '@/api/programs';
 // import { useCategoriesStore } from '@/stores/categoriesStore'; // ← ADD
 
+const ADMIN_FILTERS_STORAGE_KEY = 'admin-expenses-filters';
+
 export function AdminExpensesView() {
   const user = useAuthStore(s => s.user);
   const [expenses, setExpenses] = React.useState<Expense[]>([]);
@@ -37,9 +39,10 @@ export function AdminExpensesView() {
   const [showEditPettyCash, setShowEditPettyCash] = React.useState(false);
   const [editingExpenseId, setEditingExpenseId] = React.useState<string | null>(null);
   const [editingExpenseData, setEditingExpenseData] = React.useState<Expense | null>(null);
+  const [filtersReady, setFiltersReady] = React.useState(false);
 
   // Program filter state (admin view)
-  const [programFilter, setProgramFilter] = React.useState<string>(''); // '' means All programs
+  const [programFilter, setProgramFilter] = React.useState<string[]>([]); // [] means All programs
   const [programs, setPrograms] = React.useState<Program[]>([]);
   const [programsLoading, setProgramsLoading] = React.useState(false);
   const [programsError, setProgramsError] = React.useState<string | null>(null);
@@ -82,6 +85,65 @@ export function AdminExpensesView() {
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewAllExpenses = userActions.includes('expenses.admin.view');
+  const effectiveProgramFilter = programFilter.length ? programFilter : undefined;
+
+  // Load saved filters per user (admin view only)
+  React.useEffect(() => {
+    if (!user?.userId) return;
+
+    setFiltersReady(false);
+    setSearchText('');
+    setStatusFilter('');
+    setPriorityFilter('');
+    setDateFrom('');
+    setDateTo('');
+    setSortBy('date');
+    setSortDir('desc');
+    setProgramFilter([]);
+
+    try {
+      const raw = localStorage.getItem(`${ADMIN_FILTERS_STORAGE_KEY}:${user.userId}`);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (typeof parsed.searchText === 'string') setSearchText(parsed.searchText);
+        if (typeof parsed.statusFilter === 'string') setStatusFilter(parsed.statusFilter);
+        if (typeof parsed.priorityFilter === 'string') setPriorityFilter(parsed.priorityFilter);
+        if (typeof parsed.dateFrom === 'string') setDateFrom(parsed.dateFrom);
+        if (typeof parsed.dateTo === 'string') setDateTo(parsed.dateTo);
+        if (typeof parsed.sortBy === 'string') setSortBy(parsed.sortBy);
+        if (parsed.sortDir === 'asc' || parsed.sortDir === 'desc') setSortDir(parsed.sortDir);
+        if (Array.isArray(parsed.programFilter)) {
+          setProgramFilter(parsed.programFilter.filter((id: unknown) => typeof id === 'string'));
+        }
+      }
+    } catch (err) {
+      console.warn('Failed to load admin filters from storage', err);
+    } finally {
+      setFiltersReady(true);
+    }
+  }, [user?.userId]);
+
+  // Persist filters per user (admin view only)
+  React.useEffect(() => {
+    if (!user?.userId || !filtersReady) return;
+
+    const payload = {
+      searchText,
+      statusFilter,
+      priorityFilter,
+      dateFrom,
+      dateTo,
+      sortBy,
+      sortDir,
+      programFilter,
+    };
+
+    try {
+      localStorage.setItem(`${ADMIN_FILTERS_STORAGE_KEY}:${user.userId}`, JSON.stringify(payload));
+    } catch (err) {
+      console.warn('Failed to save admin filters to storage', err);
+    }
+  }, [dateFrom, dateTo, priorityFilter, programFilter, searchText, sortBy, sortDir, statusFilter, user?.userId, filtersReady]);
 
   // Fetch all expenses (no program filtering for admin view)
   React.useEffect(() => {
@@ -89,6 +151,7 @@ export function AdminExpensesView() {
       setLoading(false);
       return;
     }
+    if (!filtersReady) return;
 
     async function fetchInitialExpenses() {
       try {
@@ -98,7 +161,7 @@ export function AdminExpensesView() {
           // No programId filter for admin view - show all programs
           page: 1,
           pageSize,
-          programId: programFilter || undefined
+          programId: effectiveProgramFilter
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -112,11 +175,11 @@ export function AdminExpensesView() {
     }
 
     fetchInitialExpenses();
-  }, [user?.userId, programFilter]);
+  }, [user?.userId, programFilter, filtersReady]);
 
   // Fetch expenses when search/filter parameters change
   React.useEffect(() => {
-    if (!user?.userId) return;
+    if (!user?.userId || !filtersReady) return;
 
     const fetchFilteredExpenses = async () => {
       try {
@@ -133,7 +196,7 @@ export function AdminExpensesView() {
           dateTo: dateTo || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
-          programId: programFilter || undefined,
+          programId: effectiveProgramFilter,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -152,10 +215,10 @@ export function AdminExpensesView() {
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, programFilter]);
+  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, programFilter, filtersReady]);
 
   const loadMoreExpenses = React.useCallback(async () => {
-    if (loadingMore || !hasMore || !user?.userId || loadingRef.current) return;
+    if (loadingMore || !hasMore || !user?.userId || loadingRef.current || !filtersReady) return;
 
     try {
       loadingRef.current = true;
@@ -173,7 +236,7 @@ export function AdminExpensesView() {
         dateTo: dateTo || undefined,
         sort_by: sortBy,
         sort_dir: sortDir,
-        programId: programFilter || undefined,
+        programId: effectiveProgramFilter,
       });
 
       // Check if we already have these expenses to prevent duplicates
@@ -191,7 +254,7 @@ export function AdminExpensesView() {
       loadingRef.current = false;
       setLoadingMore(false);
     }
-  }, [hasMore, loadingMore, pageSize, user?.userId, currentPage, searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, programFilter]);
+  }, [hasMore, loadingMore, pageSize, user?.userId, currentPage, searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, programFilter, filtersReady]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -305,7 +368,7 @@ export function AdminExpensesView() {
         // No programId filter for admin view - show all programs
         page: 1,
         pageSize,
-        programId: programFilter || undefined
+        programId: effectiveProgramFilter
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -336,7 +399,7 @@ export function AdminExpensesView() {
         // No programId filter for admin view - show all programs
         page: 1,
         pageSize,
-        programId: programFilter || undefined
+        programId: effectiveProgramFilter
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -401,7 +464,7 @@ export function AdminExpensesView() {
           sortBy={sortBy}
           sortDir={sortDir}
           onSortChange={(by, dir) => { setSortBy(by); setSortDir(dir); }}
-          programId={programFilter || null}
+          programId={effectiveProgramFilter || null}
           expenses={expenses}
           loading={loading}
           loadingMore={loadingMore}
@@ -410,6 +473,7 @@ export function AdminExpensesView() {
           showProgramColumn={true}
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
+          allowReject={true}
         />
 
         <Outlet />

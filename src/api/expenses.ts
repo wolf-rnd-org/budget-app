@@ -5,7 +5,7 @@ import { useAuthStore } from '@/stores/authStore';
 
 interface GetExpensesParams {
   user_id?: number; // optional: omit when user has expenses.view
-  programId?: string;
+  programId?: string | string[];
   page?: number;
   pageSize?: number;
   searchText?: string;
@@ -20,28 +20,47 @@ interface GetExpensesParams {
 
 export async function getExpenses(params: GetExpensesParams): Promise<{ data: Expense[]; hasMore: boolean; totalCount?: number }> {
   const { user_id, programId, page = 1, pageSize = 20, searchText, status, dateFrom, dateTo, priority, sort_by, sort_dir } = params;
-  
-  // Always get user actions from auth store
-  const userActions = useAuthStore.getState().user?.actions || [];
+  const authState = useAuthStore.getState();
+  const rawUserActions = authState.user?.actions ?? authState.actions ?? [];
+  const normalizedActions = Array.isArray(rawUserActions)
+    ? rawUserActions
+    : rawUserActions
+      ? [String(rawUserActions)]
+      : [];
+  const userActionsParam = JSON.stringify(normalizedActions);
+  const programIds = Array.isArray(programId)
+    ? programId.filter(Boolean)
+    : programId
+      ? [programId]
+      : [];
+  const primaryProgramId = programIds.length === 1 ? programIds[0] : undefined;
+  const multipleProgramIds = programIds.length > 1 ? programIds : undefined;
+  const commaSeparatedProgramIds = programIds.length > 1 ? programIds.join(',') : undefined;
   // ⚠️ ב־mock לקרוא לקובץ .json; ב־real לקרוא ל־endpoint
   const endpoint = isMockMode() ? '/expenses.json' : '/';
   const response = await expensesApi.get(endpoint, {
-    params: isMockMode() ? undefined : {
-      // Only include user_id if provided (i.e., caller wants user-scoped data)
-      ...(typeof user_id === 'number' ? { user_id } : {}),
-      program_id: programId,
-      page,
-      pageSize,
-      q: searchText,
-      status,
-      date_from: dateFrom,
-      date_to: dateTo,
-      priority,
-      sort_by,
-      sort_dir,
-      // Send user actions for server-side permission checking
-      user_actions: userActions ? JSON.stringify(userActions) : undefined,
-    },
+    params: isMockMode()
+      ? undefined
+      : {
+        // Only include user_id if provided (i.e., caller wants user-scoped data)
+        ...(typeof user_id === 'number' ? { user_id } : {}),
+        // Support both single and multiple program filters; keep legacy program_id for single selection
+        ...(primaryProgramId ? { program_id: primaryProgramId } : {}),
+        ...(multipleProgramIds ? { program_ids: multipleProgramIds } : {}),
+        // Fallback for servers that accept comma-separated program_id only
+        ...(commaSeparatedProgramIds ? { program_id: commaSeparatedProgramIds } : {}),
+        page,
+        pageSize,
+        q: searchText,
+        status,
+        date_from: dateFrom,
+        date_to: dateTo,
+        priority,
+        sort_by,
+        sort_dir,
+        // Send user actions for server-side permission checking
+        user_actions: userActionsParam,
+      },
     headers: { Accept: 'application/json' },
   });
   if (isMockMode()) {
@@ -49,7 +68,15 @@ export async function getExpenses(params: GetExpensesParams): Promise<{ data: Ex
 
     // Simulate server-side filters
     const filtered = all.filter(expense => {
-      const byProgram = programId ? (expense.project?.includes(String(programId))) : true;
+      const projectRaw = (expense as any).project;
+      const projectTokens = Array.isArray(projectRaw)
+        ? projectRaw.map(v => String(v))
+        : projectRaw
+          ? [String(projectRaw)]
+          : [];
+      const byProgram = programIds.length > 0
+        ? programIds.some(id => projectTokens.some(token => token === String(id) || token.includes(String(id))))
+        : true;
       const byStatus = status ? (String(expense.status).toLowerCase() === status.toLowerCase()) : true;
       const byPriority = priority ? (String(expense.priority || '').toLowerCase() === priority.toLowerCase()) : true;
       const byText = searchText ? (
@@ -100,4 +127,3 @@ export async function getExpenses(params: GetExpensesParams): Promise<{ data: Ex
 export async function deleteExpense(id: string) {
   await expensesApi.delete(`/${id}`); // מצפה ל-204 No Content
 }
-

@@ -144,7 +144,7 @@ export function RegularExpensesView() {
   }, [refreshBudgetSummary]);
 
   React.useEffect(() => {
-    if (!user?.userId || !currentProgramId) {
+    if (!user?.userId) {
       setLoading(false);
       return;
     }
@@ -170,11 +170,11 @@ export function RegularExpensesView() {
     }
 
     fetchInitialExpenses();
-  }, [user?.userId, currentProgramId]);
+  }, [user?.userId, currentProgramId, canViewAllExpenses, pageSize]);
 
   // Fetch expenses when search/filter parameters change
   React.useEffect(() => {
-    if (!user?.userId || !currentProgramId) return;
+    if (!user?.userId) return;
 
     const fetchFilteredExpenses = async () => {
       try {
@@ -209,10 +209,10 @@ export function RegularExpensesView() {
     }, 800);
 
     return () => clearTimeout(timeoutId);
-  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, currentProgramId, canViewAllExpenses]);
+  }, [searchText, statusFilter, priorityFilter, dateFrom, dateTo, sortBy, sortDir, user?.userId, currentProgramId, canViewAllExpenses, pageSize]);
 
   const loadMoreExpenses = React.useCallback(async () => {
-    if (loadingMore || !hasMore || !user?.userId || !currentProgramId || loadingRef.current) return;
+    if (loadingMore || !hasMore || !user?.userId || loadingRef.current) return;
 
     try {
       loadingRef.current = true;
@@ -247,7 +247,7 @@ export function RegularExpensesView() {
       loadingRef.current = false;
       setLoadingMore(false);
     }
-  }, [currentPage, hasMore, loadingMore, pageSize, user?.userId, currentProgramId, canViewAllExpenses]);
+  }, [canViewAllExpenses, currentPage, dateFrom, dateTo, hasMore, loadingMore, pageSize, priorityFilter, currentProgramId, searchText, sortBy, sortDir, statusFilter, user?.userId]);
 
   React.useEffect(() => {
     const handleScroll = () => {
@@ -470,19 +470,19 @@ export function RegularExpensesView() {
   const handleExpenseCreated = async (newExpense: Expense) => {
     setShowAddExpense(false);
 
-    if (!currentProgramId || !user?.userId) return;
+    if (!user?.userId) return;
 
     try {
       // Wait a moment to ensure database is updated after server save
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Fetch fresh expenses list from server
-      const result = await getExpenses({
-        user_id: canViewAllExpenses ? undefined : user.userId,
-        page: 1,
-        pageSize,
-        programId: currentProgramId
-      });
+        const result = await getExpenses({
+          user_id: canViewAllExpenses ? undefined : user.userId,
+          page: 1,
+          pageSize,
+          programId: currentProgramId
+        });
       setExpenses(result.data);
       setHasMore(result.hasMore);
       setCurrentPage(1);
@@ -503,19 +503,19 @@ export function RegularExpensesView() {
     setEditingExpenseId(null);
     setEditingExpenseData(null);
 
-    if (!currentProgramId || !user?.userId) return;
+    if (!user?.userId) return;
 
     try {
       // Wait a moment to ensure database is updated after server save
       await new Promise(resolve => setTimeout(resolve, 500));
 
       // Fetch fresh expenses list from server
-      const result = await getExpenses({
-        user_id: canViewAllExpenses ? undefined : user.userId,
-        page: 1,
-        pageSize,
-        programId: currentProgramId
-      });
+        const result = await getExpenses({
+          user_id: canViewAllExpenses ? undefined : user.userId,
+          page: 1,
+          pageSize,
+          programId: currentProgramId
+        });
       setExpenses(result.data);
       setHasMore(result.hasMore);
       setCurrentPage(1);
