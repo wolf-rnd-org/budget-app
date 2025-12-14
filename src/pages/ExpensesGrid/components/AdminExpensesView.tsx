@@ -39,7 +39,7 @@ export function AdminExpensesView() {
   const [editingExpenseData, setEditingExpenseData] = React.useState<Expense | null>(null);
 
   // Program filter state (admin view)
-  const [programFilter, setProgramFilter] = React.useState<string>(''); // '' means All programs
+  const [programFilter, setProgramFilter] = React.useState<string[]>([]); // [] means All programs
   const [programs, setPrograms] = React.useState<Program[]>([]);
   const [programsLoading, setProgramsLoading] = React.useState(false);
   const [programsError, setProgramsError] = React.useState<string | null>(null);
@@ -82,6 +82,7 @@ export function AdminExpensesView() {
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewAllExpenses = userActions.includes('expenses.admin.view');
+  const effectiveProgramFilter = programFilter.length ? programFilter : undefined;
 
   // Fetch all expenses (no program filtering for admin view)
   React.useEffect(() => {
@@ -98,7 +99,7 @@ export function AdminExpensesView() {
           // No programId filter for admin view - show all programs
           page: 1,
           pageSize,
-          programId: programFilter || undefined
+          programId: effectiveProgramFilter
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -133,7 +134,7 @@ export function AdminExpensesView() {
           dateTo: dateTo || undefined,
           sort_by: sortBy,
           sort_dir: sortDir,
-          programId: programFilter || undefined,
+          programId: effectiveProgramFilter,
         });
         setExpenses(result.data);
         setHasMore(result.hasMore);
@@ -173,7 +174,7 @@ export function AdminExpensesView() {
         dateTo: dateTo || undefined,
         sort_by: sortBy,
         sort_dir: sortDir,
-        programId: programFilter || undefined,
+        programId: effectiveProgramFilter,
       });
 
       // Check if we already have these expenses to prevent duplicates
@@ -305,7 +306,7 @@ export function AdminExpensesView() {
         // No programId filter for admin view - show all programs
         page: 1,
         pageSize,
-        programId: programFilter || undefined
+        programId: effectiveProgramFilter
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -336,7 +337,7 @@ export function AdminExpensesView() {
         // No programId filter for admin view - show all programs
         page: 1,
         pageSize,
-        programId: programFilter || undefined
+        programId: effectiveProgramFilter
       });
       setExpenses(result.data);
       setHasMore(result.hasMore);
@@ -401,7 +402,7 @@ export function AdminExpensesView() {
           sortBy={sortBy}
           sortDir={sortDir}
           onSortChange={(by, dir) => { setSortBy(by); setSortDir(dir); }}
-          programId={programFilter || null}
+          programId={effectiveProgramFilter || null}
           expenses={expenses}
           loading={loading}
           loadingMore={loadingMore}
@@ -410,6 +411,7 @@ export function AdminExpensesView() {
           showProgramColumn={true}
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
+          allowReject={true}
         />
 
         <Outlet />

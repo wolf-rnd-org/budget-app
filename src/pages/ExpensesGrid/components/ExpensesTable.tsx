@@ -1,5 +1,5 @@
 ﻿import React from 'react';
-import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload, Eye, MoreHorizontal, ExternalLink, XCircle } from 'lucide-react';
+import { Edit3, Trash2, ChevronDown, ChevronUp, Search, AlertTriangle, Download, Upload, Eye, MoreHorizontal, ExternalLink, XCircle, Undo2 } from 'lucide-react';
 import { Expense } from '@/api/types';
 import { formatCurrency } from '@/shared/utils';
 import { useAuthStore } from '@/stores/authStore';
@@ -18,7 +18,7 @@ interface ExpensesTableProps {
   sortBy: string;
   sortDir: 'asc' | 'desc';
   onSortChange?: (by: string, dir: 'asc' | 'desc') => void;
-  programId: string | null;
+  programId: string | string[] | null;
   // Add props for expenses data from parent
   expenses: Expense[];
   loading: boolean;
@@ -33,6 +33,8 @@ interface ExpensesTableProps {
   onExpenseStatusUpdate?: (expense: Expense) => void;
   // Callback when an expense object is updated (e.g., after receipt upload)
   onExpenseUpdated?: (expense: Expense) => void;
+  // Allow admin to reject expenses with a reason
+  allowReject?: boolean;
 }
 
 export function ExpensesTable({
@@ -57,7 +59,8 @@ export function ExpensesTable({
   showProgramColumn = false,
   showDownloadColumn = false,
   onExpenseStatusUpdate,
-  onExpenseUpdated
+  onExpenseUpdated,
+  allowReject = false
 }: ExpensesTableProps) {
   const { user } = useAuthStore();
   const [error, setError] = React.useState<string | null>(null);
@@ -65,6 +68,11 @@ export function ExpensesTable({
   const [uploadingId, setUploadingId] = React.useState<string | null>(null);
   const [uploadErrors, setUploadErrors] = React.useState<Record<string, string>>({});
   const [actionMenuOpenId, setActionMenuOpenId] = React.useState<string | null>(null);
+  const [rejectDialogExpense, setRejectDialogExpense] = React.useState<Expense | null>(null);
+  const [rejectReason, setRejectReason] = React.useState('');
+  const [rejectingId, setRejectingId] = React.useState<string | null>(null);
+  const [removeRejectingId, setRemoveRejectingId] = React.useState<string | null>(null);
+  const [rejectError, setRejectError] = React.useState<string | null>(null);
 
   // Treat urgent styling as inactive once the expense is sent for payment (and beyond)
   const isUrgentStyled = (expense: Expense) => {
@@ -73,6 +81,11 @@ export function ExpensesTable({
     return String(expense.priority || '').toLowerCase() === 'urgent' && !suppressed.has(status);
   };
   const isRejected = (expense: Expense) => String(expense.status || '').toLowerCase() === 'rejected';
+  const getRejectionReason = (expense: Expense) =>
+    (expense as any).rejection_reason ||
+    (expense as any).reject_reason ||
+    (expense as any).reason ||
+    '';
 
   // Helpers to handle file download links from server
   const normalizeFiles = (files: any): { url: string; name?: string }[] => {
@@ -316,6 +329,103 @@ export function ExpensesTable({
       }
     } catch (err) {
       console.error('Failed to update expense status:', err);
+    }
+  };
+
+  const applyLocalExpenseUpdate = (updated: Expense) => {
+    if (onExpenseStatusUpdate) {
+      onExpenseStatusUpdate(updated);
+    }
+    if (onExpenseUpdated) {
+      onExpenseUpdated(updated);
+    }
+  };
+
+  const openRejectDialog = (expense: Expense) => {
+    setRejectDialogExpense(expense);
+    setRejectReason(getRejectionReason(expense) || '');
+    setRejectError(null);
+  };
+
+  const closeRejectDialog = () => {
+    setRejectDialogExpense(null);
+    setRejectReason('');
+    setRejectError(null);
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectDialogExpense) return;
+    const reason = rejectReason.trim();
+    if (!reason) {
+      setRejectError('חובה להזין סיבת דחיה');
+      return;
+    }
+    try {
+      setRejectingId(rejectDialogExpense.id);
+      setRejectError(null);
+      const res = await expensesApi.patch(`/${rejectDialogExpense.id}/status`, {
+        status: 'rejected',
+        rejection_reason: reason,
+        reject_reason: reason,
+      });
+      const updatedServer =
+        res?.data?.data?.fields ||
+        res?.data?.fields ||
+        res?.data?.data ||
+        res?.data ||
+        {};
+      const nextStatus =
+        updatedServer.status ||
+        updatedServer.fields?.status ||
+        'rejected';
+      const updatedExpense = {
+        ...rejectDialogExpense,
+        ...updatedServer,
+        status: nextStatus,
+        rejection_reason: reason,
+      } as Expense;
+      applyLocalExpenseUpdate(updatedExpense);
+      closeRejectDialog();
+    } catch (err) {
+      console.error('Reject failed', err);
+      setRejectError('שמירת הדחיה נכשלה. נסו שוב.');
+    } finally {
+      setRejectingId(null);
+    }
+  };
+
+  const handleRemoveRejection = async (expense: Expense, event: React.MouseEvent) => {
+    event.stopPropagation();
+    if (removeRejectingId) return;
+    try {
+      setRemoveRejectingId(expense.id);
+      const res = await expensesApi.patch(`/${expense.id}/status`, {
+        status: 'new',
+        rejection_reason: null,
+        reject_reason: null,
+      });
+      const updatedServer =
+        res?.data?.data?.fields ||
+        res?.data?.fields ||
+        res?.data?.data ||
+        res?.data ||
+        {};
+      const nextStatus =
+        updatedServer.status ||
+        updatedServer.fields?.status ||
+        'new';
+      const updatedExpense = {
+        ...expense,
+        ...updatedServer,
+        status: nextStatus,
+        rejection_reason: '',
+      } as Expense;
+      applyLocalExpenseUpdate(updatedExpense);
+    } catch (err) {
+      console.error('Remove rejection failed', err);
+      setRejectError('הסרת הדחיה נכשלה. נסו שוב.');
+    } finally {
+      setRemoveRejectingId(null);
     }
   };
 
@@ -599,6 +709,17 @@ export function ExpensesTable({
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible">
+      {rejectError && (
+        <div className="mx-6 mt-4 mb-2 rounded-lg border border-rose-200 bg-rose-50 px-4 py-3 text-rose-800 text-sm flex items-center justify-between">
+          <span>{rejectError}</span>
+          <button
+            onClick={() => setRejectError(null)}
+            className="text-rose-700 hover:text-rose-900 font-semibold"
+          >
+            ✕
+          </button>
+        </div>
+      )}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[1100px]">
           <thead>
@@ -653,6 +774,8 @@ export function ExpensesTable({
             {filteredExpenses.map((expense) => {
               const isInvoiceExportDisabled = (expense.status || '').toLowerCase() !== 'new';
               const hasInvoiceFile = normalizeFiles(expense.invoice_file).length > 0;
+              const rejectionReason = getRejectionReason(expense);
+              const isEditDisabled = isRejected(expense) && !allowReject; // Regular users can't edit rejected expenses
 
               return (
                 <React.Fragment key={expense.id}>
@@ -678,9 +801,9 @@ export function ExpensesTable({
                             )
                         )}
                         {isRejected(expense) && (
-                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-200 text-gray-700 border border-gray-300">
+                          <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-gray-100 text-gray-700 border border-gray-200">
                             <XCircle className="w-3 h-3" />
-                            נדחה • לא ישולם
+                            נדחה
                           </span>
                         )}
                         <div className={`font-medium ${isRejected(expense) ? 'text-gray-500' : 'text-gray-900'}`}>{expense.supplier_name}</div>
@@ -700,7 +823,9 @@ export function ExpensesTable({
                         {getStatusText(expense.status)}
                       </span>
                       {isRejected(expense) && (
-                        <div className="mt-1 text-xs text-gray-500"> יש להעלות הוצאה חדשה </div>
+                        <div className="mt-1 text-xs text-gray-500">
+                          {rejectionReason ? `סיבת דחיה: ${rejectionReason}` : 'יש להעלות הוצאה חדשה'}
+                        </div>
                       )}
                     </td>
                     {showProgramColumn && (
@@ -804,6 +929,36 @@ export function ExpensesTable({
                             </div>
                           </div>
                         )}
+                        {allowReject && (
+                          <div className="relative">
+                            {isRejected(expense) ? (
+                              <button
+                                onClick={(e) => handleRemoveRejection(expense, e)}
+                                className="peer p-2 rounded-full transition text-emerald-700 hover:text-emerald-900 hover:bg-emerald-50 disabled:opacity-60"
+                                disabled={removeRejectingId === expense.id}
+                                aria-label="הסר דחיה"
+                              >
+                                <Undo2 className="w-4 h-4" />
+                              </button>
+                            ) : (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  openRejectDialog(expense);
+                                }}
+                                className="peer p-2 rounded-full transition text-rose-700 hover:text-rose-900 hover:bg-rose-50 disabled:opacity-60"
+                                disabled={rejectingId === expense.id}
+                                aria-label="דחיית חשבונית"
+                              >
+                                <XCircle className="w-4 h-4" />
+                              </button>
+                            )}
+                            <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg opacity-0 peer-hover:opacity-100 transition-opacity pointer-events-none whitespace-nowrap z-10">
+                              {isRejected(expense) ? 'הסר דחיה והחזר למצב חדש' : 'דחה חשבונית עם סיבת דחיה'}
+                              <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-gray-900"></div>
+                            </div>
+                          </div>
+                        )}
 
                         <div className="relative">
                           <button
@@ -816,8 +971,9 @@ export function ExpensesTable({
                           >
                             <MoreHorizontal className="w-4 h-4" />
                           </button>
-                          {actionMenuOpenId === expense.id && (
-                            <div className="absolute left-0 top-9 z-10 w-36 rounded-lg border border-gray-100 bg-white shadow-lg py-2">
+                        {actionMenuOpenId === expense.id && (
+                          <div className="absolute left-0 top-9 z-10 w-36 rounded-lg border border-gray-100 bg-white shadow-lg py-2">
+                            {!isEditDisabled && (
                               <button
                                 onClick={(e) => {
                                   e.stopPropagation();
@@ -829,19 +985,20 @@ export function ExpensesTable({
                                 <Edit3 className="w-4 h-4" />
                                 עריכה
                               </button>
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActionMenuOpenId(null);
-                                  onDelete(expense, e);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                                מחיקה
-                              </button>
-                            </div>
-                          )}
+                            )}
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActionMenuOpenId(null);
+                                onDelete(expense, e);
+                              }}
+                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                              מחיקה
+                            </button>
+                          </div>
+                        )}
                         </div>
 
                         <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
@@ -869,14 +1026,7 @@ export function ExpensesTable({
                           </div>
 
                           <div className="bg-white rounded-lg p-6 shadow-sm">
-                            {isRejected(expense) && (
-                              <div className="mb-6 p-4 rounded-lg border border-rose-300 bg-rose-50 text-rose-800 flex items-center gap-3">
-                                <XCircle className="w-5 h-5" />
-                                <div className="font-medium">
-                                  ההוצאה נדחתה, לא מחושבת בתקציב ולא תועבר לתשלום. יש להעלות הוצאה חדשה.
-                                </div>
-                              </div>
-                            )}
+                            
                             {/* Prominent Receipt Upload Banner inside expanded row */}
                             {((expense.status || '').toLowerCase() === 'sent_for_payment') && (
                               <div className="mb-6 p-4 rounded-lg border border-amber-300 bg-amber-50 flex flex-col sm:flex-row items-center justify-between gap-3">
@@ -1092,7 +1242,61 @@ export function ExpensesTable({
           </div>
         )}
       </div>
+      {rejectDialogExpense && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 space-y-4">
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900">דחיית חשבונית</h3>
+                <p className="text-sm text-gray-600">יש לציין סיבת דחיה. תישלח התראה למפעילה ולספקית.</p>
+              </div>
+              <button
+                onClick={closeRejectDialog}
+                className="text-gray-400 hover:text-gray-600"
+                aria-label="סגור דחיה"
+              >
+                <XCircle className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-gray-700" htmlFor="reject-reason">סיבת דחיה *</label>
+              <textarea
+                id="reject-reason"
+                value={rejectReason}
+                onChange={(e) => setRejectReason(e.target.value)}
+                className="w-full rounded-lg border border-gray-200 focus:ring-2 focus:ring-rose-500 focus:border-rose-500 min-h-[120px] p-3 text-sm"
+                placeholder="פרטי בקצרה מדוע החשבונית נדחתה"
+              />
+            </div>
+
+            {rejectError && (
+              <div className="text-sm text-rose-700 bg-rose-50 border border-rose-200 rounded-lg px-3 py-2">
+                {rejectError}
+              </div>
+            )}
+
+            <div className="flex justify-end gap-3 pt-2">
+              <button
+                onClick={handleRejectConfirm}
+                disabled={rejectingId === (rejectDialogExpense?.id ?? null)}
+                className={`inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold text-white transition ${rejectingId === (rejectDialogExpense?.id ?? null) ? 'bg-rose-400 cursor-not-allowed' : 'bg-rose-600 hover:bg-rose-700'}`}
+              >
+                {rejectingId === (rejectDialogExpense?.id ?? null) && (
+                  <span className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></span>
+                )}
+                אשר דחיה
+              </button>
+              <button
+                onClick={closeRejectDialog}
+                className="px-4 py-2 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm font-medium"
+              >
+                ביטול
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
-
