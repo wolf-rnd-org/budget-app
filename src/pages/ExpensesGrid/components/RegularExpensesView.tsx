@@ -84,6 +84,8 @@ export function RegularExpensesView() {
   const userActions = user?.actions || [];
   const canViewBudgets = userActions.includes('program_budgets.view');
   const canViewAllExpenses = userActions.includes('expenses.view');
+  const canEditExpenses = userActions.includes('expenses.admin.edit');
+  const canDeleteExpenses = userActions.includes('expenses.admin.delete');
 
   const applyProgramSummary = React.useCallback((summary: ProgramSummaryWithExpected) => {
     const budgetVal = Number(summary.total_budget) || 0;
@@ -267,6 +269,7 @@ export function RegularExpensesView() {
 
   const handleEdit = (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
+    if (!canEditExpenses) return;
     setEditingExpenseId(expense.id);
     setEditingExpenseData(expense);
     const candidates = [
@@ -313,6 +316,7 @@ export function RegularExpensesView() {
 
   const handleDelete = async (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
+    if (!canDeleteExpenses) return;
     if (!confirm(`למחוק את ההוצאה של ${expense.supplier_name}?`)) return;
 
     try {
