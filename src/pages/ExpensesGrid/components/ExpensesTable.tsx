@@ -63,6 +63,12 @@ export function ExpensesTable({
   allowReject = false
 }: ExpensesTableProps) {
   const { user } = useAuthStore();
+  const userActions = user?.actions || [];
+  const canReject = userActions.includes('expenses.admin.reject');
+  const canEdit = userActions.includes('expenses.admin.edit');
+  const canDelete = userActions.includes('expenses.admin.delete');
+  const allowRejectActions = allowReject && canReject;
+  const hasRowActions = canEdit || canDelete;
   const [error, setError] = React.useState<string | null>(null);
   const [expandedRow, setExpandedRow] = React.useState<string | null>(null);
   const [uploadingId, setUploadingId] = React.useState<string | null>(null);
@@ -775,7 +781,7 @@ export function ExpensesTable({
               const isInvoiceExportDisabled = (expense.status || '').toLowerCase() !== 'new';
               const hasInvoiceFile = normalizeFiles(expense.invoice_file).length > 0;
               const rejectionReason = getRejectionReason(expense);
-              const isEditDisabled = isRejected(expense) && !allowReject; // Regular users can't edit rejected expenses
+              const isEditDisabled = !canEdit;
 
               return (
                 <React.Fragment key={expense.id}>
@@ -929,7 +935,7 @@ export function ExpensesTable({
                             </div>
                           </div>
                         )}
-                        {allowReject && (
+                        {allowRejectActions && (
                           <div className="relative">
                             {isRejected(expense) ? (
                               <button
@@ -960,46 +966,50 @@ export function ExpensesTable({
                           </div>
                         )}
 
-                        <div className="relative">
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setActionMenuOpenId((prev) => prev === expense.id ? null : expense.id);
-                            }}
-                            className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition"
-                            aria-label="פעולות נוספות"
-                          >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        {actionMenuOpenId === expense.id && (
-                          <div className="absolute left-0 top-9 z-10 w-36 rounded-lg border border-gray-100 bg-white shadow-lg py-2">
-                            {!isEditDisabled && (
-                              <button
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setActionMenuOpenId(null);
-                                  onEdit(expense, e);
-                                }}
-                                className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
-                              >
-                                <Edit3 className="w-4 h-4" />
-                                עריכה
-                              </button>
-                            )}
+                        {hasRowActions && (
+                          <div className="relative">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
-                                setActionMenuOpenId(null);
-                                onDelete(expense, e);
+                                setActionMenuOpenId((prev) => prev === expense.id ? null : expense.id);
                               }}
-                              className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                              className="p-2 text-gray-500 hover:text-gray-900 hover:bg-gray-100 rounded-full transition"
+                              aria-label="פעולות נוספות"
                             >
-                              <Trash2 className="w-4 h-4" />
-                              מחיקה
+                              <MoreHorizontal className="w-4 h-4" />
                             </button>
+                            {actionMenuOpenId === expense.id && (
+                              <div className="absolute left-0 top-9 z-10 w-36 rounded-lg border border-gray-100 bg-white shadow-lg py-2">
+                                {canEdit && !isEditDisabled && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActionMenuOpenId(null);
+                                      onEdit(expense, e);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-gray-700 hover:bg-gray-50"
+                                  >
+                                    <Edit3 className="w-4 h-4" />
+                                    עריכה
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActionMenuOpenId(null);
+                                      onDelete(expense, e);
+                                    }}
+                                    className="flex w-full items-center gap-2 px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                    מחיקה
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
                         )}
-                        </div>
 
                         <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors">
                           {expandedRow === expense.id ?

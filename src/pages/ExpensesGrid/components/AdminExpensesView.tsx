@@ -85,6 +85,9 @@ export function AdminExpensesView() {
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewAllExpenses = userActions.includes('expenses.admin.view');
+  const canRejectExpenses = userActions.includes('expenses.admin.reject');
+  const canEditExpenses = userActions.includes('expenses.admin.edit');
+  const canDeleteExpenses = userActions.includes('expenses.admin.delete');
   const effectiveProgramFilter = programFilter.length ? programFilter : undefined;
 
   // Load saved filters per user (admin view only)
@@ -274,6 +277,7 @@ export function AdminExpensesView() {
 
   const handleEdit = (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
+    if (!canEditExpenses) return;
     setEditingExpenseId(expense.id);
     setEditingExpenseData(expense);
     // ← ADD: קבעי את התוכנית הרלוונטית לדיאלוג
@@ -330,6 +334,7 @@ export function AdminExpensesView() {
 
   const handleDelete = async (expense: Expense, event: React.MouseEvent) => {
     event.stopPropagation();
+    if (!canDeleteExpenses) return;
     if (!confirm(`למחוק את ההוצאה של ${expense.supplier_name}?`)) return;
 
     try {
@@ -473,7 +478,7 @@ export function AdminExpensesView() {
           showProgramColumn={true}
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
-          allowReject={true}
+          allowReject={canRejectExpenses}
         />
 
         <Outlet />
