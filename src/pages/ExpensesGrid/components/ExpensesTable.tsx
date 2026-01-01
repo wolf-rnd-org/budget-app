@@ -35,6 +35,8 @@ interface ExpensesTableProps {
   onExpenseUpdated?: (expense: Expense) => void;
   // Allow admin to reject expenses with a reason
   allowReject?: boolean;
+  // Only enforce admin permissions on admin grids
+  enforceAdminActions?: boolean;
 }
 
 export function ExpensesTable({
@@ -60,13 +62,14 @@ export function ExpensesTable({
   showDownloadColumn = false,
   onExpenseStatusUpdate,
   onExpenseUpdated,
-  allowReject = false
+  allowReject = false,
+  enforceAdminActions = false
 }: ExpensesTableProps) {
   const { user } = useAuthStore();
   const userActions = user?.actions || [];
-  const canReject = userActions.includes('expenses.admin.reject');
-  const canEdit = userActions.includes('expenses.admin.edit');
-  const canDelete = userActions.includes('expenses.admin.delete');
+  const canReject = !enforceAdminActions || userActions.includes('expenses.admin.reject');
+  const canEdit = !enforceAdminActions || userActions.includes('expenses.admin.edit');
+  const canDelete = !enforceAdminActions || userActions.includes('expenses.admin.delete');
   const allowRejectActions = allowReject && canReject;
   const hasRowActions = canEdit || canDelete;
   const [error, setError] = React.useState<string | null>(null);
