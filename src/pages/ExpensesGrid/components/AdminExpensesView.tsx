@@ -479,6 +479,7 @@ export function AdminExpensesView() {
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
           allowReject={canRejectExpenses}
+          enforceAdminActions={true}
         />
 
         <Outlet />
