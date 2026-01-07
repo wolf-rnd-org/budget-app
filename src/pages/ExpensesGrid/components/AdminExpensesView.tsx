@@ -8,7 +8,7 @@ import { BudgetSummaryCards, SearchFilters, ExpensesTable, AddExpenseWizard, Edi
 import EditSalaryDialog from './MoreActions/EditSalaryDialog';
 import EditPettyCashDialog from './MoreActions/EditPettyCashDialog';
 import { expensesApi } from '@/api/http';
-import { getPrograms, type Program } from '@/api/programs';
+import { getPrograms, getProgramSummary, type Program } from '@/api/programs';
 // import { useCategoriesStore } from '@/stores/categoriesStore'; // ← ADD
 
 const ADMIN_FILTERS_STORAGE_KEY = 'admin-expenses-filters';
@@ -46,6 +46,7 @@ export function AdminExpensesView() {
   const [programs, setPrograms] = React.useState<Program[]>([]);
   const [programsLoading, setProgramsLoading] = React.useState(false);
   const [programsError, setProgramsError] = React.useState<string | null>(null);
+  const [programBudgets, setProgramBudgets] = React.useState<Record<string, number | null>>({});
 
 //   // ← ADD: קטגוריות לפי תוכנית ההוצאה הנערכת
 //   const categoriesByProgram = useCategoriesStore(s => s.categoriesByProgram);
@@ -89,6 +90,78 @@ export function AdminExpensesView() {
   const canEditExpenses = userActions.includes('expenses.admin.edit');
   const canDeleteExpenses = userActions.includes('expenses.admin.delete');
   const effectiveProgramFilter = programFilter.length ? programFilter : undefined;
+
+  React.useEffect(() => {
+    if (expenses.length === 0) return;
+
+    const programNameById = new Map(programs.map((program) => [String(program.id), program.name]));
+    const programIdByName = new Map(programs.map((program) => [program.name, String(program.id)]));
+    const programIdByRecordId = new Map(
+      programs
+        .filter((program) => program.recordId)
+        .map((program) => [String(program.recordId), String(program.id)])
+    );
+    const programNameByRecordId = new Map(
+      programs
+        .filter((program) => program.recordId)
+        .map((program) => [String(program.recordId), program.name])
+    );
+    const programIds = Array.from(
+      new Set(
+        expenses
+          .map((expense) => {
+            const rawId = (expense as any).program_id ?? (expense as any).programId ?? (expense as any)?.program?.id;
+            if (rawId) {
+              const rawStr = String(rawId);
+              return programIdByRecordId.get(rawStr) ?? rawStr;
+            }
+            const name = (expense as any).program_name ?? (expense as any).programName ?? (expense as any)?.program?.name;
+            return name ? programIdByName.get(String(name)) : null;
+          })
+          .filter(Boolean)
+      )
+    );
+
+    const missing = programIds.filter(id => !(id in programBudgets));
+    if (missing.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      const results = await Promise.all(missing.map(async (programId) => {
+        try {
+          const summary = await getProgramSummary(programId);
+          const budgetVal = Number(summary.total_budget);
+          return { programId, budget: Number.isFinite(budgetVal) ? budgetVal : null };
+        } catch (err) {
+          console.error('Failed to load program budget', err);
+          return { programId, budget: null };
+        }
+      }));
+
+      if (cancelled) return;
+      setProgramBudgets(prev => {
+        const next = { ...prev };
+        for (const entry of results) {
+          next[entry.programId] = entry.budget;
+          const name = programNameById.get(entry.programId);
+          if (name) next[name] = entry.budget;
+        }
+        for (const [recordId, programId] of programIdByRecordId.entries()) {
+          if (programId in next) {
+            next[recordId] = next[programId];
+            continue;
+          }
+          const name = programNameByRecordId.get(recordId);
+          if (name && name in next) {
+            next[recordId] = next[name];
+          }
+        }
+        return next;
+      });
+    })();
+
+    return () => { cancelled = true; };
+  }, [expenses, programBudgets, programs]);
 
   // Load saved filters per user (admin view only)
   React.useEffect(() => {
@@ -476,6 +549,8 @@ export function AdminExpensesView() {
           hasMore={hasMore}
           onLoadMore={loadMoreExpenses}
           showProgramColumn={true}
+          showBudgetColumn={true}
+          budgetByProgramId={programBudgets}
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
           allowReject={canRejectExpenses}

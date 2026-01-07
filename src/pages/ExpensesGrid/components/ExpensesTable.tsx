@@ -29,6 +29,14 @@ interface ExpensesTableProps {
   showProgramColumn?: boolean;
   // Show download files column for admin view
   showDownloadColumn?: boolean;
+  // Show budget column for admin view
+  showBudgetColumn?: boolean;
+  // Override budget value per row (e.g., program total budget for regular users)
+  budgetTotal?: number | null;
+  // Optional per-program budget map (admin view)
+  budgetByProgramId?: Record<string, number | null>;
+  // Optional label for budget column header
+  budgetColumnLabel?: string;
   // Callback when expense status is updated
   onExpenseStatusUpdate?: (expense: Expense) => void;
   // Callback when an expense object is updated (e.g., after receipt upload)
@@ -60,6 +68,10 @@ export function ExpensesTable({
   onLoadMore,
   showProgramColumn = false,
   showDownloadColumn = false,
+  showBudgetColumn = false,
+  budgetTotal = null,
+  budgetByProgramId,
+  budgetColumnLabel = 'תקציב',
   onExpenseStatusUpdate,
   onExpenseUpdated,
   allowReject = false,
@@ -82,6 +94,7 @@ export function ExpensesTable({
   const [rejectingId, setRejectingId] = React.useState<string | null>(null);
   const [removeRejectingId, setRemoveRejectingId] = React.useState<string | null>(null);
   const [rejectError, setRejectError] = React.useState<string | null>(null);
+  const baseColumns = 5 + (showBudgetColumn ? 1 : 0);
 
   // Treat urgent styling as inactive once the expense is sent for payment (and beyond)
   const isUrgentStyled = (expense: Expense) => {
@@ -702,6 +715,24 @@ export function ExpensesTable({
     }
     return categories;
   };
+  const resolveBudgetValue = (expense: Expense) => {
+    if (budgetByProgramId && expense.program_id) {
+      return budgetByProgramId[String(expense.program_id)] ?? null;
+    }
+    if (budgetByProgramId && expense.program_name) {
+      return budgetByProgramId[String(expense.program_name)] ?? null;
+    }
+    if (typeof budgetTotal === 'number' && !Number.isNaN(budgetTotal)) {
+      return budgetTotal;
+    }
+    return expense.budget;
+  };
+  const formatBudget = (budget: Expense['budget']) => {
+    if (budget === null || budget === undefined || budget === '') return '-';
+    const numericBudget = typeof budget === 'number' ? budget : Number(budget);
+    if (Number.isNaN(numericBudget)) return String(budget);
+    return formatCurrency(numericBudget);
+  };
   if (filteredExpenses.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible">
@@ -733,50 +764,60 @@ export function ExpensesTable({
         <table className="w-full min-w-[1100px]">
           <thead>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">ספק</th>
-              <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">תאריך</th>
-              <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">סכום</th>
-              <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900 min-w-[180px]">סטטוס</th>
+              <th className="text-right px-3 py-3 text-sm font-semibold text-gray-900">ספק</th>
+              <th className="text-right px-3 py-3 text-sm font-semibold text-gray-900">תאריך</th>
+              <th className="text-right px-3 py-3 text-sm font-semibold text-gray-900">סכום</th>
+              <th className="text-right px-3 py-3 text-sm font-semibold text-gray-900 min-w-[160px]">סטטוס</th>
               {showProgramColumn && (
-                <th className="text-right px-6 py-4 text-sm font-semibold text-gray-900">תוכנית</th>
+                <th className="text-right px-3 py-3 text-sm font-semibold text-gray-900">תוכנית</th>
+              )}
+              {showBudgetColumn && (
+                <th className="text-right px-3 py-3 text-sm font-semibold text-gray-900 min-w-[120px]">{budgetColumnLabel}</th>
               )}
               {showDownloadColumn && (
-                <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900">קבצים</th>
+                <th className="text-center px-3 py-3 text-sm font-semibold text-gray-900">קבצים</th>
               )}
-              <th className="text-center px-6 py-4 text-sm font-semibold text-gray-900 w-[180px]">פעולות</th>
+              <th className="text-center px-3 py-3 text-sm font-semibold text-gray-900 w-[160px]">פעולות</th>
             </tr>
             <tr className="bg-gray-50 border-b border-gray-200">
-              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+              <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
                 <button type="button" onClick={() => handleSortClick('supplier_name')} className="inline-flex items-center gap-1 hover:text-blue-600">
                   <SortIcon field="supplier_name" />
                 </button>
               </th>
-              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+              <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
                 <button type="button" onClick={() => handleSortClick('date')} className="inline-flex items-center gap-1 hover:text-blue-600">
                   <SortIcon field="date" />
                 </button>
               </th>
-              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+              <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
                 <button type="button" onClick={() => handleSortClick('amount')} className="inline-flex items-center gap-1 hover:text-blue-600">
                   <SortIcon field="amount" />
                 </button>
               </th>
-              <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+              <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
                 <button type="button" onClick={() => handleSortClick('status')} className="inline-flex items-center gap-1 hover:text-blue-600">
                   <SortIcon field="status" />
                 </button>
               </th>
               {showProgramColumn && (
-                <th className="text-right px-6 pb-3 pt-0 text-xs font-normal text-gray-500">
+                <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
                   <button type="button" onClick={() => handleSortClick('program_name')} className="inline-flex items-center gap-1 hover:text-blue-600">
                     <SortIcon field="program_name" />
                   </button>
                 </th>
               )}
-              {showDownloadColumn && (
-                <th className="px-6 pb-3 pt-0"></th>
+              {showBudgetColumn && (
+                <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
+                  <button type="button" onClick={() => handleSortClick('budget')} className="inline-flex items-center gap-1 hover:text-blue-600">
+                    <SortIcon field="budget" />
+                  </button>
+                </th>
               )}
-              <th className="px-6 pb-3 pt-0"></th>
+              {showDownloadColumn && (
+                <th className="px-3 pb-2 pt-0"></th>
+              )}
+              <th className="px-3 pb-2 pt-0"></th>
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-100">
@@ -795,7 +836,7 @@ export function ExpensesTable({
                         : (isUrgentStyled(expense) ? 'bg-red-50 border-l-4 border-red-500' : '')
                       }`}
                   >
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <div className="flex items-center gap-2">
                         {isUrgentStyled(expense) && (
                           (showDownloadColumn || showProgramColumn)
@@ -819,15 +860,15 @@ export function ExpensesTable({
                       </div>
                       <div className={`text-sm ${isRejected(expense) ? 'text-gray-400 line-through' : 'text-gray-500'}`}>{expense.invoice_description}</div>
                     </td>
-                    <td className="px-6 py-4 text-gray-700">
+                    <td className="px-3 py-3 text-gray-700">
                       {new Date(expense.date).toLocaleDateString('he-IL')}
                     </td>
-                    <td className="px-6 py-4">
+                    <td className="px-3 py-3">
                       <span className={`font-semibold ${isRejected(expense) ? 'text-gray-400 line-through' : 'text-gray-900'}`}>
                         {formatCurrency(expense.amount)}
                       </span>
                     </td>
-                    <td className="px-6 py-4 min-w-[150px]">
+                    <td className="px-3 py-3 min-w-[140px]">
                       <span className={`inline-flex items-center px-3 py-1 rounded-full text-xs font-medium border ${getStatusStyle(expense.status)}`}>
                         {getStatusText(expense.status)}
                       </span>
@@ -838,18 +879,23 @@ export function ExpensesTable({
                       )}
                     </td>
                     {showProgramColumn && (
-                      <td className="px-6 py-4 text-gray-700">
-                        {expense.program_name || '—'}
+                      <td className="px-3 py-3 text-gray-700">
+                        {expense.program_name || '-'}
+                      </td>
+                    )}
+                    {showBudgetColumn && (
+                      <td className="px-3 py-3 text-gray-700 font-medium">
+                        {formatBudget(resolveBudgetValue(expense))}
                       </td>
                     )}
                     {showDownloadColumn && (
-                      <td className="px-6 py-4">
+                      <td className="px-3 py-3">
                         <div className="flex items-center justify-center gap-2">
                           {renderDownloadButtons(expense)}
                         </div>
                       </td>
                     )}
-                    <td className="py-4 pr-6 pl-12 w-[200px] min-w-[200px]">
+                    <td className="py-3 pr-3 pl-6 w-[180px] min-w-[180px]">
                       <div className="relative flex items-center gap-1.5 w-full justify-end">
                         {/* Left slot to keep actions aligned across rows */}
                         <div className="flex items-center justify-start min-w-[64px] mr-4">
@@ -1030,7 +1076,7 @@ export function ExpensesTable({
                       <td colSpan={
                         (showProgramColumn ? 1 : 0) +
                         (showDownloadColumn ? 1 : 0) +
-                        5 // base columns: supplier, date, amount, status, actions
+                        baseColumns // base columns: supplier, date, amount, status, actions (+ budget)
                       } className="px-6 py-0">
                         <div className="bg-gray-50 rounded-xl p-6 m-4 border border-gray-200">
                           <div className="mb-4">
