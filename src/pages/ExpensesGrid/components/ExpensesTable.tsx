@@ -1165,7 +1165,7 @@ export function ExpensesTable({
                               </div>
 
                               <div className="flex justify-between items-center py-2 border-b border-gray-100">
-                                <span className="text-sm font-medium text-gray-600">מקור מימון</span>
+                                <span className="text-sm font-medium text-gray-600">תקציב</span>
                                 <span className="text-sm text-gray-900 font-medium">{resolveFundingSourceName(expense)}</span>
                               </div>
 

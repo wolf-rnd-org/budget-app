@@ -595,7 +595,7 @@ export function AdminExpensesView() {
           onLoadMore={loadMoreExpenses}
           showProgramColumn={true}
           showBudgetColumn={true}
-          budgetColumnLabel="מקור מימון"
+          budgetColumnLabel="תקציב"
           budgetColumnValue={resolveFundingSource}
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
