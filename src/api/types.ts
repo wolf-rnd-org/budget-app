@@ -19,6 +19,7 @@ export type Expense = {
   date: string;
   program_id: string;
   program_name?: string; // Program name for admin view
+  funding_source_name?: string | null;
   // Server may return list of ids (legacy) or list of {id,name}
   categories: CategoryRef[] | string[] | string;
   amount: number;

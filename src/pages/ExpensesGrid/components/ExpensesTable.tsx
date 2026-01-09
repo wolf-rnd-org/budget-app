@@ -37,6 +37,10 @@ interface ExpensesTableProps {
   budgetByProgramId?: Record<string, number | null>;
   // Optional label for budget column header
   budgetColumnLabel?: string;
+  // Optional value renderer for the budget column
+  budgetColumnValue?: (expense: Expense) => React.ReactNode;
+  // Optional sort key for the budget column
+  budgetColumnSortKey?: string;
   // Callback when expense status is updated
   onExpenseStatusUpdate?: (expense: Expense) => void;
   // Callback when an expense object is updated (e.g., after receipt upload)
@@ -72,6 +76,8 @@ export function ExpensesTable({
   budgetTotal = null,
   budgetByProgramId,
   budgetColumnLabel = 'תקציב',
+  budgetColumnValue,
+  budgetColumnSortKey = 'budget',
   onExpenseStatusUpdate,
   onExpenseUpdated,
   allowReject = false,
@@ -733,6 +739,19 @@ export function ExpensesTable({
     if (Number.isNaN(numericBudget)) return String(budget);
     return formatCurrency(numericBudget);
   };
+  const resolveFundingSourceName = (expense: Expense) => {
+    const direct =
+      (expense as any).funding_source_name ??
+      (expense as any).fundingSourceName ??
+      (expense as any).funding_source ??
+      (expense as any).fundingSource;
+    if (direct === null || direct === undefined || direct === '') return '-';
+    if (typeof direct === 'object') {
+      const name = (direct as any).name;
+      return name ? String(name) : '-';
+    }
+    return String(direct);
+  };
   if (filteredExpenses.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-visible">
@@ -809,8 +828,8 @@ export function ExpensesTable({
               )}
               {showBudgetColumn && (
                 <th className="text-right px-3 pb-2 pt-0 text-xs font-normal text-gray-500">
-                  <button type="button" onClick={() => handleSortClick('budget')} className="inline-flex items-center gap-1 hover:text-blue-600">
-                    <SortIcon field="budget" />
+                  <button type="button" onClick={() => handleSortClick(budgetColumnSortKey)} className="inline-flex items-center gap-1 hover:text-blue-600">
+                    <SortIcon field={budgetColumnSortKey} />
                   </button>
                 </th>
               )}
@@ -885,7 +904,7 @@ export function ExpensesTable({
                     )}
                     {showBudgetColumn && (
                       <td className="px-3 py-3 text-gray-700 font-medium">
-                        {formatBudget(resolveBudgetValue(expense))}
+                        {budgetColumnValue ? budgetColumnValue(expense) : formatBudget(resolveBudgetValue(expense))}
                       </td>
                     )}
                     {showDownloadColumn && (
@@ -1143,6 +1162,11 @@ export function ExpensesTable({
                               <div className="flex justify-between items-center py-2 border-b border-gray-100">
                                 <span className="text-sm font-medium text-gray-600">סוג חשבונית</span>
                                 <span className="text-sm text-gray-900 font-medium">{expense.invoice_type}</span>
+                              </div>
+
+                              <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                                <span className="text-sm font-medium text-gray-600">מקור מימון</span>
+                                <span className="text-sm text-gray-900 font-medium">{resolveFundingSourceName(expense)}</span>
                               </div>
 
                               <div className="flex justify-between items-center py-2 border-b border-gray-100">

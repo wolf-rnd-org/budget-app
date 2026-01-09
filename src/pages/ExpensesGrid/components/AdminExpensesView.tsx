@@ -7,7 +7,7 @@ import { useAuthStore } from '@/stores/authStore';
 import { BudgetSummaryCards, SearchFilters, ExpensesTable, AddExpenseWizard, EditExpenseModal } from './index';
 import EditSalaryDialog from './MoreActions/EditSalaryDialog';
 import EditPettyCashDialog from './MoreActions/EditPettyCashDialog';
-import { expensesApi } from '@/api/http';
+import { expensesApi, getFundingSources } from '@/api/http';
 import { getPrograms, getProgramSummary, type Program } from '@/api/programs';
 // import { useCategoriesStore } from '@/stores/categoriesStore'; // ← ADD
 
@@ -47,6 +47,7 @@ export function AdminExpensesView() {
   const [programsLoading, setProgramsLoading] = React.useState(false);
   const [programsError, setProgramsError] = React.useState<string | null>(null);
   const [programBudgets, setProgramBudgets] = React.useState<Record<string, number | null>>({});
+  const [fundingSourcesById, setFundingSourcesById] = React.useState<Record<string, string>>({});
 
 //   // ← ADD: קטגוריות לפי תוכנית ההוצאה הנערכת
 //   const categoriesByProgram = useCategoriesStore(s => s.categoriesByProgram);
@@ -83,6 +84,24 @@ export function AdminExpensesView() {
     return () => { cancelled = true; };
   }, []);
 
+  React.useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await getFundingSources();
+        if (cancelled) return;
+        const next: Record<string, string> = {};
+        for (const src of list || []) {
+          if (src?.id) next[String(src.id)] = src.name;
+        }
+        setFundingSourcesById(next);
+      } catch (err) {
+        console.error('Failed to load funding sources', err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
   // Get user actions from store
   const userActions = user?.actions || [];
   const canViewAllExpenses = userActions.includes('expenses.admin.view');
@@ -90,6 +109,32 @@ export function AdminExpensesView() {
   const canEditExpenses = userActions.includes('expenses.admin.edit');
   const canDeleteExpenses = userActions.includes('expenses.admin.delete');
   const effectiveProgramFilter = programFilter.length ? programFilter : undefined;
+  const resolveFundingSource = React.useCallback((expense: Expense) => {
+    const direct =
+      (expense as any).funding_source_name ??
+      (expense as any).fundingSourceName ??
+      (expense as any).funding_source ??
+      (expense as any).fundingSource;
+    if (direct && typeof direct === 'object') {
+      const directName = (direct as any).name;
+      if (directName) return String(directName);
+      const directId = (direct as any).id ?? (direct as any).recId;
+      if (directId && fundingSourcesById[String(directId)]) {
+        return fundingSourcesById[String(directId)];
+      }
+    } else if (direct != null) {
+      const directKey = String(direct);
+      if (fundingSourcesById[directKey]) return fundingSourcesById[directKey];
+      return directKey;
+    }
+    const id =
+      (expense as any).funding_source_id ??
+      (expense as any).fundingSourceId;
+    if (id && fundingSourcesById[String(id)]) {
+      return fundingSourcesById[String(id)];
+    }
+    return '-';
+  }, [fundingSourcesById]);
 
   React.useEffect(() => {
     if (expenses.length === 0) return;
@@ -550,7 +595,8 @@ export function AdminExpensesView() {
           onLoadMore={loadMoreExpenses}
           showProgramColumn={true}
           showBudgetColumn={true}
-          budgetByProgramId={programBudgets}
+          budgetColumnLabel="מקור מימון"
+          budgetColumnValue={resolveFundingSource}
           showDownloadColumn={true}
           onExpenseStatusUpdate={handleExpenseStatusUpdate}
           allowReject={canRejectExpenses}
