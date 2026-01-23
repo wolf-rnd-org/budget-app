@@ -327,14 +327,16 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
           bank_details_file: newBankFile ? 'new-bank-url' : expense!.bank_details_file,
         };
         onSuccess(updatedExpense);
-        handleClose();
+        setHasUnsavedChanges(false);
+        handleClose(true);
         return;
       }
 
       // Real API call
       const response = await expensesApi.patch(`${expenseId}`, updateData);
       onSuccess(response.data);
-      handleClose();
+      setHasUnsavedChanges(false);
+      handleClose(true);
     } catch (err) {
       setError('שגיאה בעדכון ההוצאה. אנא נסה שוב.');
       console.error('Update expense error:', err);
@@ -343,16 +345,16 @@ export function EditExpenseModal({ isOpen, expenseId, initialExpense, onClose, o
     }
   };
 
-  const handleClose = () => {
-    if (hasUnsavedChanges) {
-      if (confirm('יש לך שינויים שלא נשמרו. האם אתה בטוח שברצונך לסגור?')) {
+  const handleClose = (force = false) => {
+    if (!force && hasUnsavedChanges) {
+      if (confirm('\u05d9\u05e9 \u05dc\u05da \u05e9\u05d9\u05e0\u05d5\u05d9\u05d9\u05dd \u05e9\u05dc\u05d0 \u05e0\u05e9\u05de\u05e8\u05d5. \u05d4\u05d0\u05dd \u05d0\u05ea\u05d4 \u05d1\u05d8\u05d5\u05d7 \u05e9\u05d1\u05e8\u05e6\u05d5\u05e0\u05da \u05dc\u05e1\u05d2\u05d5\u05e8?')) {
         resetModal();
         onClose();
       }
-    } else {
-      resetModal();
-      onClose();
+      return;
     }
+    resetModal();
+    onClose();
   };
 
   const resetModal = () => {
