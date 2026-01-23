@@ -9,6 +9,7 @@ interface AddExpenseWizardProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: (expense: any) => void;
+  onTimeoutRefresh?: () => Promise<void> | void;
   totalBudget: number;
   totalExpenses: number;
 }
@@ -29,7 +30,7 @@ export interface ParsedInvoiceData {
   beneficiary?: string;
 }
 
-export function AddExpenseWizard({ isOpen, onClose, onSuccess, totalBudget, totalExpenses }: AddExpenseWizardProps) {
+export function AddExpenseWizard({ isOpen, onClose, onSuccess, onTimeoutRefresh, totalBudget, totalExpenses }: AddExpenseWizardProps) {
   const [currentStep, setCurrentStep] = React.useState(1);
   const [parsedData, setParsedData] = React.useState<ParsedInvoiceData | null>(null);
   const [files, setFiles] = React.useState<{ invoice?: File; bank?: File }>({});
@@ -121,6 +122,7 @@ export function AddExpenseWizard({ isOpen, onClose, onSuccess, totalBudget, tota
               onBack={handleBackToAI}
               onSuccess={handleSuccess}
               onCancel={handleClose}
+              onTimeoutRefresh={onTimeoutRefresh}
             />
           )}
         </div>

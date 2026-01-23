@@ -1,4 +1,5 @@
 import React from 'react';
+import axios from 'axios';
 import { ArrowLeft, Save, X } from 'lucide-react';
 import { expensesApi, isMockMode, getFundingSources, type FundingSourceDTO } from '@/api/http';
 import { useAuthStore } from '@/stores/authStore';
@@ -15,9 +16,10 @@ interface AdditionalDetailsStepProps {
   onBack: () => void;
   onSuccess: (expense: any) => void;
   onCancel: () => void;
+  onTimeoutRefresh?: () => Promise<void> | void;
 }
 
-export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, initialBankFile, totalBudget, totalExpenses, onBack, onSuccess, onCancel }: AdditionalDetailsStepProps) {
+export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, initialBankFile, totalBudget, totalExpenses, onBack, onSuccess, onCancel, onTimeoutRefresh }: AdditionalDetailsStepProps) {
   const { user } = useAuthStore();
   const programs = useProgramsStore(s => s.programs);
   const programsLoading = useProgramsStore(s => s.loading);
@@ -68,6 +70,7 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
   }, [programId]);
 
   const handleSubmit = async () => {
+    if (loading) return;
     setAttemptedSubmit(true);
     if (!user?.userId) {
       setError('שגיאה במשתמש - נסו להתחבר שוב');
@@ -136,11 +139,24 @@ export default function AdditionalDetailsStep({ parsedData, initialInvoiceFile, 
 
         const response = await expensesApi.post('/', form, {
           headers: { 'Content-Type': 'multipart/form-data' },
+          timeout: 60000,
         });
         onSuccess(response.data);
       }
     } catch (err) {
-      setError('שמירה נכשלה. נסו שוב.');
+      const isTimeout = axios.isAxiosError(err)
+        && (err.code === 'ECONNABORTED'
+          || (typeof err.message === 'string' && err.message.toLowerCase().includes('timeout')));
+      if (isTimeout) {
+        setError('\u05d4\u05d4\u05d5\u05e6\u05d0\u05d4 \u05e0\u05e9\u05de\u05e8\u05d4, \u05de\u05d7\u05db\u05d9\u05dd \u05dc\u05d0\u05d9\u05e9\u05d5\u05e8\u2026 \u05e0\u05d8\u05e2\u05df \u05de\u05d7\u05d3\u05e9');
+        try {
+          await onTimeoutRefresh?.();
+        } catch (refreshError) {
+          console.error('Refresh after timeout failed:', refreshError);
+        }
+        return;
+      }
+      setError('\u05e9\u05de\u05d9\u05e8\u05d4 \u05e0\u05db\u05e9\u05dc\u05d4. \u05e0\u05e1\u05d5 \u05e9\u05d5\u05d1.');
       console.error('Create expense error:', err);
     } finally {
       setLoading(false);

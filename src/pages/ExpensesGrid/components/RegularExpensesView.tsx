@@ -467,28 +467,32 @@ export function RegularExpensesView() {
     }
   };
 
+  const refreshExpensesList = React.useCallback(async () => {
+    if (!user?.userId) return;
+
+    // Wait a moment to ensure database is updated after server save
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const result = await getExpenses({
+      user_id: canViewAllExpenses ? undefined : user.userId,
+      page: 1,
+      pageSize,
+      programId: currentProgramId
+    });
+    setExpenses(result.data);
+    setHasMore(result.hasMore);
+    setCurrentPage(1);
+
+    await refreshBudgetSummary();
+  }, [user?.userId, canViewAllExpenses, currentProgramId, pageSize, refreshBudgetSummary]);
+
   const handleExpenseCreated = async (newExpense: Expense) => {
     setShowAddExpense(false);
 
     if (!user?.userId) return;
 
     try {
-      // Wait a moment to ensure database is updated after server save
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Fetch fresh expenses list from server
-        const result = await getExpenses({
-          user_id: canViewAllExpenses ? undefined : user.userId,
-          page: 1,
-          pageSize,
-          programId: currentProgramId
-        });
-      setExpenses(result.data);
-      setHasMore(result.hasMore);
-      setCurrentPage(1);
-
-      // Also refresh budget summary
-      await refreshBudgetSummary();
+      await refreshExpensesList();
     } catch (err) {
       console.error("Error refreshing expenses and budget summary:", err);
       // Fallback to optimistic update if server fetch fails
@@ -506,24 +510,7 @@ export function RegularExpensesView() {
     if (!user?.userId) return;
 
     try {
-      // Wait a moment to ensure database is updated after server save
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Fetch fresh expenses list from server
-        const result = await getExpenses({
-          user_id: canViewAllExpenses ? undefined : user.userId,
-          page: 1,
-          pageSize,
-          programId: currentProgramId
-        });
-      setExpenses(result.data);
-      setHasMore(result.hasMore);
-      setCurrentPage(1);
-
-      // Also refresh budget summary
-      if (canViewBudgets) {
-        await refreshBudgetSummary();
-      }
+      await refreshExpensesList();
     } catch (err) {
       console.error('Error refreshing expenses and budget summary:', err);
       // Fallback to optimistic update if server fetch fails
@@ -644,6 +631,7 @@ export function RegularExpensesView() {
           isOpen={showAddExpense}
           onClose={() => setShowAddExpense(false)}
           onSuccess={handleExpenseCreated}
+          onTimeoutRefresh={refreshExpensesList}
           totalBudget={totalBudget}
           totalExpenses={totalExpenses}
         />

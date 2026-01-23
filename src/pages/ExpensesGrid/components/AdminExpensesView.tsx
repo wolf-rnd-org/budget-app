@@ -358,26 +358,31 @@ export function AdminExpensesView() {
     setShowAddExpense(true);
   };
 
+  const refreshExpensesList = React.useCallback(async () => {
+    if (!user?.userId) return;
+
+    // Wait a moment to ensure database is updated after server save
+    await new Promise(resolve => setTimeout(resolve, 500));
+
+    const result = await getExpenses({
+      // No user_id filter for admin view - show all users' expenses
+      // No programId filter for admin view - show all programs
+      page: 1,
+      pageSize,
+      programId: effectiveProgramFilter
+    });
+    setExpenses(result.data);
+    setHasMore(result.hasMore);
+    setCurrentPage(1);
+  }, [user?.userId, pageSize, effectiveProgramFilter]);
+
   const handleExpenseCreated = async (newExpense: Expense) => {
     setShowAddExpense(false);
 
     if (!user?.userId) return;
 
     try {
-      // Wait a moment to ensure database is updated after server save
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Fetch fresh expenses list from server (admin view shows all expenses)
-      const result = await getExpenses({
-        // No user_id filter for admin view - show all users' expenses
-        // No programId filter for admin view - show all programs
-        page: 1,
-        pageSize,
-        programId: effectiveProgramFilter
-      });
-      setExpenses(result.data);
-      setHasMore(result.hasMore);
-      setCurrentPage(1);
+      await refreshExpensesList();
     } catch (err) {
       console.error("Error refreshing expenses:", err);
       // Fallback to optimistic update if server fetch fails
@@ -395,20 +400,7 @@ export function AdminExpensesView() {
     if (!user?.userId) return;
 
     try {
-      // Wait a moment to ensure database is updated after server save
-      await new Promise(resolve => setTimeout(resolve, 500));
-
-      // Fetch fresh expenses list from server (admin view shows all expenses)
-      const result = await getExpenses({
-        // No user_id filter for admin view - show all users' expenses
-        // No programId filter for admin view - show all programs
-        page: 1,
-        pageSize,
-        programId: effectiveProgramFilter
-      });
-      setExpenses(result.data);
-      setHasMore(result.hasMore);
-      setCurrentPage(1);
+      await refreshExpensesList();
     } catch (err) {
       console.error("Error refreshing expenses:", err);
       // Fallback to optimistic update if server fetch fails
@@ -488,6 +480,7 @@ export function AdminExpensesView() {
           isOpen={showAddExpense}
           onClose={() => setShowAddExpense(false)}
           onSuccess={handleExpenseCreated}
+          onTimeoutRefresh={refreshExpensesList}
           // No budget constraints for admin view
           totalBudget={0}
           totalExpenses={0}
